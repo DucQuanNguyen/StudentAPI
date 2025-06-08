@@ -2,7 +2,7 @@ Use studentDemo
 Go
 CREATE TABLE [dbo].[LopHoc](
 	[ID] [int] NOT NULL primary key,
-	[ClassName] [nvarchar](max) NOT NULL,
+	[ClassName] [nvarchar](30) NOT NULL,
 )
 GO
 insert into [LopHoc] values('1','SE0001')
@@ -28,3 +28,13 @@ insert into [SinhVien] values('SE05031','Ha Hung Dung',CAST(N'2001-03-01' AS Dat
 insert into [SinhVien] values('SE05201','Tran Hung Cuong',CAST(N'2001-11-06' AS Date),'Female','5')
 insert into [SinhVien] values('SE05102','Le Khanh Van',CAST(N'1999-01-05' AS Date),'Male','5')
 insert into [SinhVien] values('SE05603','Nguyen Phu Dat',CAST(N'2003-04-04' AS Date),'Female','5')
+Go
+CREATE TABLE [dbo].[User](
+	[ID] [int] NOT NULL primary key,
+	[UserName] [nvarchar](50) NOT NULL,
+	[PassWord] [nvarchar](50) NOT NULL,
+	[Role] [nvarchar](5) NOT NULL,
+)
+GO
+insert into [User] values(1,'user1','@123','user')
+insert into [User] values(2,'admin','@123','admin')
