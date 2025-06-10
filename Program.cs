@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using StudentAPI.Repository;
+using StudentAPI.Model;
 namespace StudentAPI
 {
     public class Program
@@ -9,7 +9,7 @@ namespace StudentAPI
             var builder = WebApplication.CreateBuilder(args);
 
             //connection Db
-            builder.Services.AddDbContext<DataContext>(options =>
+            builder.Services.AddDbContext<StudentDemoContext>(options =>
             {
                 options.UseSqlServer(builder.Configuration["ConnectionStrings:ConnectedDb"]);
             });

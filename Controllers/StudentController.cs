@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using StudentAPI.Models;
-using StudentAPI.Repository;
+using StudentAPI.Model;
 
 namespace StudentAPI.Controllers
 {
@@ -10,9 +9,9 @@ namespace StudentAPI.Controllers
 
     public class StudentController : ControllerBase
     {
-        private readonly DataContext _context;
+        private readonly StudentDemoContext _context;
 
-        public StudentController(DataContext context)
+        public StudentController(StudentDemoContext context)
         {
             _context = context;
         }
@@ -20,39 +19,39 @@ namespace StudentAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<SinhVien>>> GetSinhViens()
         {
-            return await _context.students.Include(s => s.LopHoc).ToListAsync();
+            return await _context.SinhViens.Include(s => s.Class).ToListAsync();
         }
 
         [HttpPost]
         public async Task<ActionResult<SinhVien>> CreateSinhVien(SinhVien sinhVien)
         {
-            _context.students.Add(sinhVien);
+            _context.SinhViens.Add(sinhVien);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetSinhViens), new { id = sinhVien.Id }, sinhVien);
+            return CreatedAtAction(nameof(GetSinhViens), new { id = sinhVien.StudentId }, sinhVien);
         }
         [HttpGet("{id}")]
-        public async Task<ActionResult<SinhVien>> GetSinhVien(int id)
+        public async Task<ActionResult<SinhVien>> GetSinhVien(string id)
         {
-            var SinhVien = await _context.students.FindAsync(id);
+            var SinhVien = await _context.SinhViens.FindAsync(id);
             if (SinhVien == null) return NotFound();
             return SinhVien;
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateSinhVien(int id, SinhVien updatedSinhVien)
+        public async Task<IActionResult> UpdateSinhVien(string id, SinhVien updatedSinhVien)
         {
-            if (id != updatedSinhVien.Id) return BadRequest();
+            if (!id.Equals(updatedSinhVien.StudentId)) return BadRequest();
             _context.Entry(updatedSinhVien).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteSinhVien(int id)
+        public async Task<IActionResult> DeleteSinhVien(string id)
         {
-            var SinhVien = await _context.students.FindAsync(id);
+            var SinhVien = await _context.SinhViens.FindAsync(id);
             if (SinhVien == null) return NotFound();
-            _context.students.Remove(SinhVien);
+            _context.SinhViens.Remove(SinhVien);
             await _context.SaveChangesAsync();
             return NoContent();
         }

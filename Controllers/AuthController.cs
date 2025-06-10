@@ -5,8 +5,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
-using StudentAPI.Models;
-using StudentAPI.Repository;
+using StudentAPI.Model;
 
 namespace StudentAPI.Controllers
 {
@@ -14,10 +13,10 @@ namespace StudentAPI.Controllers
     [Route("api/auth")]
     public class AuthController : ControllerBase
     {
-        private readonly DataContext _dbContext;
+        private readonly StudentDemoContext _dbContext;
         private const string SecretKey = "HS256"; // Khóa bí mật để ký JWT
 
-        public AuthController(DataContext dbContext)
+        public AuthController(StudentDemoContext dbContext)
         {
             _dbContext = dbContext;
         }
@@ -34,7 +33,7 @@ namespace StudentAPI.Controllers
         [HttpPost("login")]
         public IActionResult Login([FromBody] User user)
         {
-            var existingUser = _dbContext.Users.FirstOrDefault(u => u.Username == user.Username && u.Password == user.Password);
+            var existingUser = _dbContext.Users.FirstOrDefault(u => u.UserName == user.UserName && u.PassWord == user.PassWord);
             if (existingUser == null)
                 return Unauthorized(new { message = "Tên đăng nhập hoặc mật khẩu không đúng!" });
 
@@ -49,7 +48,7 @@ namespace StudentAPI.Controllers
 
             var claims = new[]
             {
-            new Claim(ClaimTypes.Name, user.Username),
+            new Claim(ClaimTypes.Name, user.UserName),
             new Claim(ClaimTypes.Role, user.Role)
         };
 

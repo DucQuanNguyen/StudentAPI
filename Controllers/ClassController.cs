@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using StudentAPI.Models;
-using StudentAPI.Repository;
+using StudentAPI.Model;
 
 namespace StudentAPI.Controllers
 {
@@ -10,9 +9,9 @@ namespace StudentAPI.Controllers
 
     public class ClassController : ControllerBase
     {
-        private readonly DataContext _context;
+        private readonly StudentDemoContext _context;
 
-        public ClassController(DataContext context)
+        public ClassController(StudentDemoContext context)
         {
             _context = context;
         }
@@ -20,20 +19,20 @@ namespace StudentAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<LopHoc>>> GetLopHocs()
         {
-            return await _context.classes.Include(l => l.SinhViens).ToListAsync();
+            return await _context.LopHocs.Include(l => l.SinhViens).ToListAsync();
         }
 
         [HttpPost]
         public async Task<ActionResult<LopHoc>> CreateLopHoc(LopHoc lopHoc)
         {
-            _context.classes.Add(lopHoc);
+            _context.LopHocs.Add(lopHoc);
             await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetLopHocs), new { id = lopHoc.Id }, lopHoc);
         }
         [HttpGet("{id}")]
         public async Task<ActionResult<LopHoc>> GetLopHoc(int id)
         {
-            var LopHoc = await _context.classes.FindAsync(id);
+            var LopHoc = await _context.LopHocs.FindAsync(id);
             if (LopHoc == null) return NotFound();
             return LopHoc;
         }
@@ -50,9 +49,9 @@ namespace StudentAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteLopHoc(int id)
         {
-            var LopHoc = await _context.classes.FindAsync(id);
+            var LopHoc = await _context.LopHocs.FindAsync(id);
             if (LopHoc == null) return NotFound();
-            _context.classes.Remove(LopHoc);
+            _context.LopHocs.Remove(LopHoc);
             await _context.SaveChangesAsync();
             return NoContent();
         }
