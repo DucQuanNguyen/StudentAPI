@@ -1,0 +1,11 @@
+diff a/Controllers/AuthController.cs b/Controllers/AuthController.cs	(rejected hunks)
+@@ -5,8 +5,7 @@
+ using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
+ using Microsoft.IdentityModel.Tokens;
+-using StudentAPI.Models;
+-using StudentAPI.Repository;
++using StudentAPI.Model;
+ 
+ namespace StudentAPI.Controllers
+ {

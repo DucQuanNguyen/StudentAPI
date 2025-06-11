@@ -1,6 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using System.Configuration;
 using StudentAPI.Model;
+using System.Data;
 
 namespace StudentAPI.Controllers
 {
@@ -9,51 +12,134 @@ namespace StudentAPI.Controllers
 
     public class StudentController : ControllerBase
     {
-        private readonly StudentDemoContext _context;
-
-        public StudentController(StudentDemoContext context)
+        //private readonly StudentDemoContext _context;
+        //public StudentController(StudentDemoContext context)
+        //{
+        //    _context = context;
+        //}
+        private readonly string _connectionString;
+        SinhVien sv = new SinhVien();
+        public StudentController(IConfiguration configuration)
         {
-            _context = context;
+            _connectionString = configuration.GetConnectionString("DefaultConnection");
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<SinhVien>>> GetSinhViens()
+        public List<SinhVien> GetSinhViens()
         {
-            return await _context.SinhViens.Include(s => s.Class).ToListAsync();
+            SqlConnection con = new SqlConnection(_connectionString);
+            SqlDataAdapter adapter = new SqlDataAdapter("GETSinhVien",con);
+            adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
+            DataTable dataTable = new DataTable();
+            adapter.Fill(dataTable);
+            List<SinhVien> liS = new List<SinhVien>();
+            if (dataTable.Rows.Count > 0) 
+            {
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    SinhVien s = new SinhVien();
+                    s.StudentId = row[0].ToString();
+                    s.StudentName = row[1].ToString();
+                    s.BirthDate = Convert.ToDateTime(row[2].ToString());
+                    s.Gender = row[3].ToString();
+                    s.ClassId = Convert.ToInt32(row[4].ToString());
+                    liS.Add(s);
+                }
+            }
+            if (liS.Count > 0)
+            {
+                return liS;
+            } 
+            else
+            {
+                return null;
+            }
+            
         }
 
         [HttpPost]
-        public async Task<ActionResult<SinhVien>> CreateSinhVien(SinhVien sinhVien)
+        public String CreateSinhVien(SinhVien sinhVien)
         {
-            _context.SinhViens.Add(sinhVien);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetSinhViens), new { id = sinhVien.StudentId }, sinhVien);
+            SqlConnection con = new SqlConnection(_connectionString);
+            SqlCommand cmd = new SqlCommand("AddSinhVien",con);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@StudentID", sinhVien.StudentId);
+            cmd.Parameters.AddWithValue("@StudentName", sinhVien.StudentName);
+            cmd.Parameters.AddWithValue("@BirthDate", sinhVien.BirthDate);
+            cmd.Parameters.AddWithValue("@Gender", sinhVien.Gender);
+            cmd.Parameters.AddWithValue("@ClassID", sinhVien.ClassId);
+            
+            con.Open();
+            int i = cmd.ExecuteNonQuery();
+            con.Close();
+            string ms;
+            if (i > 0) { ms = "Add success!"; }
+            else { ms = "Error"; }
+            return ms;
         }
+
         [HttpGet("{id}")]
-        public async Task<ActionResult<SinhVien>> GetSinhVien(string id)
+        public SinhVien GetSinhVienById(int id)
         {
-            var SinhVien = await _context.SinhViens.FindAsync(id);
-            if (SinhVien == null) return NotFound();
-            return SinhVien;
+            SqlConnection con = new SqlConnection(_connectionString);
+            SqlDataAdapter adapter = new SqlDataAdapter("GETSinhVienById", con);
+            adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
+            adapter.SelectCommand.Parameters.AddWithValue("@ID", id);
+            DataTable dataTable = new DataTable();
+            adapter.Fill(dataTable);
+            SinhVien s = new SinhVien();
+            if (dataTable.Rows.Count > 0)
+            {
+                s.StudentId = dataTable.Rows[0]["StudentId"].ToString();
+                s.StudentName = dataTable.Rows[0]["StudentName"].ToString();
+                s.BirthDate = Convert.ToDateTime(dataTable.Rows[0]["BirthDate"].ToString());
+                s.Gender = dataTable.Rows[0]["Gender"].ToString();
+                s.ClassId = Convert.ToInt32(dataTable.Rows[0]["ClassId"].ToString());
+                return s;
+            }
+            else
+            {
+                return null;
+            }
+
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateSinhVien(string id, SinhVien updatedSinhVien)
+        public string UpdateSinhVien(string id, SinhVien updatedSinhVien)
         {
-            if (!id.Equals(updatedSinhVien.StudentId)) return BadRequest();
-            _context.Entry(updatedSinhVien).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
-            await _context.SaveChangesAsync();
-            return NoContent();
+            SqlConnection con = new SqlConnection(_connectionString);
+            SqlCommand cmd = new SqlCommand("UpdateSinhVien", con);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@StudentID", id);
+            cmd.Parameters.AddWithValue("@StudentName", updatedSinhVien.StudentName);
+            cmd.Parameters.AddWithValue("@BirthDate", updatedSinhVien.BirthDate);
+            cmd.Parameters.AddWithValue("@Gender", updatedSinhVien.Gender);
+            cmd.Parameters.AddWithValue("@ClassID", updatedSinhVien.ClassId);
+
+            con.Open();
+            int i = cmd.ExecuteNonQuery();
+            con.Close();
+            string ms;
+            if (i > 0) { ms = "Update success!"; }
+            else { ms = "Error"; }
+            return ms;
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteSinhVien(string id)
+        public string DeleteSinhVien(string id)
         {
-            var SinhVien = await _context.SinhViens.FindAsync(id);
-            if (SinhVien == null) return NotFound();
-            _context.SinhViens.Remove(SinhVien);
-            await _context.SaveChangesAsync();
-            return NoContent();
+            SqlConnection con = new SqlConnection(_connectionString);
+            SqlCommand cmd = new SqlCommand("DeleteSinhVien", con);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@StudentID", id);
+
+            con.Open();
+            int i = cmd.ExecuteNonQuery();
+            con.Close();
+            string ms;
+            if (i > 0) { ms = "Delete success!"; }
+            else { ms = "Error"; }
+            return ms;
         }
 
     }

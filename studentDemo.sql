@@ -1,3 +1,5 @@
+CREATE DATABASE studentDemo
+GO
 Use studentDemo
 Go
 CREATE TABLE [dbo].[LopHoc](
@@ -38,3 +40,125 @@ CREATE TABLE [dbo].[User](
 GO
 insert into [User] values(1,'user1','@123','user')
 insert into [User] values(2,'admin','@123','admin')
+GO
+CREATE PROC GETLopHoc
+AS
+BEGIN
+	SELECT [ID]
+           ,[ClassName]
+		   FROM [dbo].[LopHoc]
+END
+GO
+CREATE PROC GETLopHocbyId(
+	@ID int)
+AS
+BEGIN
+	SELECT [ID]
+           ,[ClassName]
+		   FROM [dbo].[LopHoc] 
+		   WHERE ID = @ID
+END
+GO
+CREATE PROC AddLopHoc(
+	@ID int,
+	@ClassName nvarchar(30))
+AS
+BEGIN
+	INSERT INTO [dbo].[LopHoc]
+           ([ID]
+           ,[ClassName])
+     VALUES
+           (@ID,
+			@ClassName)
+END
+GO
+CREATE PROC UpdateLopHoc(
+	@ID nvarchar(10),
+	@ClassName nvarchar(30))
+AS
+BEGIN
+	UPDATE [dbo].[LopHoc]
+	SET [ClassName] = @ClassName
+	WHERE [ID] = @ID
+END
+GO
+CREATE PROC DeleteLopHoc(
+	@ID nvarchar(10))
+AS
+BEGIN
+	DELETE FROM [dbo].[LopHoc]
+	WHERE [ID] = @ID
+END
+Go
+CREATE PROC GETSinhVien
+AS
+BEGIN
+	SELECT [StudentID]
+           ,[StudentName]
+           ,[BirthDate]
+           ,[Gender]
+           ,[ClassID]
+		   FROM [dbo].[SinhVien]
+END
+GO
+CREATE PROC GETSinhVienById(
+	@StudentID nvarchar(10)
+)
+AS
+BEGIN
+	SELECT [StudentID]
+           ,[StudentName]
+           ,[BirthDate]
+           ,[Gender]
+           ,[ClassID]
+		   FROM [dbo].[SinhVien]
+		   WHERE [StudentID] = @StudentID
+END
+GO
+CREATE PROC AddSinhVien(
+	@StudentID nvarchar(10),
+	@StudentName nvarchar(30),
+	@BirthDate datetime,
+	@Gender nvarchar(10),
+	@ClassID int)
+AS
+BEGIN
+	INSERT INTO [dbo].[SinhVien]
+           ([StudentID]
+           ,[StudentName]
+           ,[BirthDate]
+           ,[Gender]
+           ,[ClassID])
+     VALUES
+           (@StudentID,
+			@StudentName,
+			@BirthDate,
+			@Gender,
+			@ClassID)
+END
+GO
+CREATE PROC UpdateSinhVien(
+	@StudentID nvarchar(10),
+	@StudentName nvarchar(30),
+	@BirthDate datetime,
+	@Gender nvarchar(10),
+	@ClassID int)
+AS
+BEGIN
+	UPDATE [dbo].[SinhVien]
+	SET [StudentName] = @StudentName
+      ,[BirthDate] = @BirthDate
+      ,[Gender] = @Gender
+      ,[ClassID] = @ClassID
+	WHERE [StudentID] = @StudentID
+END
+GO
+CREATE PROC DeleteSinhVien(
+	@StudentID nvarchar(10))
+AS
+BEGIN
+	DELETE FROM [dbo].[SinhVien]
+	WHERE [StudentID] = @StudentID
+END
+Go
+exec GETLopHocbyId @ID=2

@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Data;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using StudentAPI.Model;
 
@@ -9,51 +11,123 @@ namespace StudentAPI.Controllers
 
     public class ClassController : ControllerBase
     {
-        private readonly StudentDemoContext _context;
+        //private readonly StudentDemoContext _context;
 
-        public ClassController(StudentDemoContext context)
+        //public ClassController(StudentDemoContext context)
+        //{
+        //    _context = context;
+        //}
+        private readonly string _connectionString;
+        LopHoc lh = new LopHoc();
+        public ClassController(IConfiguration configuration)
         {
-            _context = context;
+            _connectionString = configuration.GetConnectionString("DefaultConnection");
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<LopHoc>>> GetLopHocs()
+        public List<LopHoc> GetLopHoc()
         {
-            return await _context.LopHocs.Include(l => l.SinhViens).ToListAsync();
+            SqlConnection con = new SqlConnection(_connectionString);
+            SqlDataAdapter adapter = new SqlDataAdapter("GETLopHoc", con);
+            adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
+            DataTable dataTable = new DataTable();
+            adapter.Fill(dataTable);
+            List<LopHoc> liL = new List<LopHoc>();
+            if (dataTable.Rows.Count > 0)
+            {
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    LopHoc l = new LopHoc();
+                    l.Id = Convert.ToInt32(row[0].ToString());
+                    l.ClassName = row[1].ToString();
+                    liL.Add(l);
+                }
+            }
+            if (liL.Count > 0)
+            {
+                return liL;
+            }
+            else
+            {
+                return null;
+            }
+
         }
 
         [HttpPost]
-        public async Task<ActionResult<LopHoc>> CreateLopHoc(LopHoc lopHoc)
+        public String CreateLopHoc(LopHoc lopHoc)
         {
-            _context.LopHocs.Add(lopHoc);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetLopHocs), new { id = lopHoc.Id }, lopHoc);
+            SqlConnection con = new SqlConnection(_connectionString);
+            SqlCommand cmd = new SqlCommand("AddLopHoc",con);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@Id", lopHoc.Id);
+            cmd.Parameters.AddWithValue("@ClassName", lopHoc.ClassName);
+
+            con.Open();
+            int i = cmd.ExecuteNonQuery();
+            con.Close();
+            string ms;
+            if (i > 0) { ms = "Add success!"; }
+            else { ms = "Error"; }
+            return ms;
         }
+
         [HttpGet("{id}")]
-        public async Task<ActionResult<LopHoc>> GetLopHoc(int id)
+        public LopHoc GetLopHocById(int id)
         {
-            var LopHoc = await _context.LopHocs.FindAsync(id);
-            if (LopHoc == null) return NotFound();
-            return LopHoc;
+            SqlConnection con = new SqlConnection(_connectionString);
+            SqlDataAdapter adapter = new SqlDataAdapter("GETLopHocbyId", con);
+            adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
+            adapter.SelectCommand.Parameters.AddWithValue("@ID", id); 
+            DataTable dataTable = new DataTable();
+            adapter.Fill(dataTable);
+            LopHoc l = new LopHoc();
+            if (dataTable.Rows.Count > 0)
+            {
+                l.Id = Convert.ToInt32(dataTable.Rows[0]["ID"].ToString());
+                l.ClassName = dataTable.Rows[0]["ClassName"].ToString();
+                return l;
+            }
+            else
+            {
+                return null;
+            }
+            
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateLopHoc(int id, LopHoc updatedLopHoc)
+        public string UpdateLopHoc(int id, LopHoc updatedLopHoc)
         {
-            if (id != updatedLopHoc.Id) return BadRequest();
-            _context.Entry(updatedLopHoc).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
-            await _context.SaveChangesAsync();
-            return NoContent();
+            SqlConnection con = new SqlConnection(_connectionString);
+            SqlCommand cmd = new SqlCommand("UpdateLopHoc", con);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@Id", id);
+            cmd.Parameters.AddWithValue("@ClassName", updatedLopHoc.ClassName);
+
+            con.Open();
+            int i = cmd.ExecuteNonQuery();
+            con.Close();
+            string ms;
+            if (i > 0) { ms = "Update success!"; }
+            else { ms = "Error"; }
+            return ms;
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteLopHoc(int id)
+        public string DeleteLopHoc(int id)
         {
-            var LopHoc = await _context.LopHocs.FindAsync(id);
-            if (LopHoc == null) return NotFound();
-            _context.LopHocs.Remove(LopHoc);
-            await _context.SaveChangesAsync();
-            return NoContent();
+            SqlConnection con = new SqlConnection(_connectionString);
+            SqlCommand cmd = new SqlCommand("DeleteLopHoc", con);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@Id", id);
+
+            con.Open();
+            int i = cmd.ExecuteNonQuery();
+            con.Close();
+            string ms;
+            if (i > 0) { ms = "Delete success!"; }
+            else { ms = "Error"; }
+            return ms;
         }
 
     }
