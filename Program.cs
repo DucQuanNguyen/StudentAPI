@@ -11,7 +11,7 @@ namespace StudentAPI
             //connection Db
             builder.Services.AddDbContext<StudentDemoContext>(options =>
             {
-                options.UseSqlServer(builder.Configuration["ConnectionStrings:ConnectedDb"]);
+                options.UseSqlServer(builder.Configuration["ConnectionStrings:DefaultConnection"]);
             });
 
             // Add services to the container.

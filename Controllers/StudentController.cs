@@ -12,13 +12,7 @@ namespace StudentAPI.Controllers
 
     public class StudentController : ControllerBase
     {
-        //private readonly StudentDemoContext _context;
-        //public StudentController(StudentDemoContext context)
-        //{
-        //    _context = context;
-        //}
         private readonly string _connectionString;
-        SinhVien sv = new SinhVien();
         public StudentController(IConfiguration configuration)
         {
             _connectionString = configuration.GetConnectionString("DefaultConnection");

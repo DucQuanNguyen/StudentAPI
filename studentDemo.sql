@@ -38,8 +38,8 @@ CREATE TABLE [dbo].[User](
 	[Role] [nvarchar](5) NOT NULL,
 )
 GO
-insert into [User] values(1,'user1','@123','user')
-insert into [User] values(2,'admin','@123','admin')
+insert into [User] values('user1','@123','user')
+insert into [User] values('admin','@123','admin')
 GO
 CREATE PROC GETLopHoc
 AS
@@ -160,5 +160,44 @@ BEGIN
 	DELETE FROM [dbo].[SinhVien]
 	WHERE [StudentID] = @StudentID
 END
-Go
-exec GETLopHocbyId @ID=2
+GO
+CREATE PROC Register(
+	@ID int,
+	@UserName [nvarchar](50), 
+	@PassWord [nvarchar](50),
+	@Role [nvarchar](5)
+)
+AS
+BEGIN
+	INSERT INTO [dbo].[User]
+           ([ID]
+           ,[UserName]
+           ,[PassWord]
+           ,[Role])
+     VALUES
+           (@ID
+           ,@UserName
+           ,@PassWord
+           ,@Role)
+END
+GO
+CREATE PROC upLogin(
+	@UserName [nvarchar](50), 
+	@PassWord [nvarchar](50)
+)
+AS
+BEGIN
+	SELECT [ID]
+      ,[UserName]
+      ,[PassWord]
+      ,[Role]
+  FROM [dbo].[User]
+  WHERE [UserName] = @UserName 
+  AND [PassWord] = @PassWord
+END
+GO
+CREATE PROC GetUser
+AS 
+BEGIN
+	SELECT * FROM [dbo].[User];
+END

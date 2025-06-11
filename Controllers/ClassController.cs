@@ -11,14 +11,7 @@ namespace StudentAPI.Controllers
 
     public class ClassController : ControllerBase
     {
-        //private readonly StudentDemoContext _context;
-
-        //public ClassController(StudentDemoContext context)
-        //{
-        //    _context = context;
-        //}
         private readonly string _connectionString;
-        LopHoc lh = new LopHoc();
         public ClassController(IConfiguration configuration)
         {
             _connectionString = configuration.GetConnectionString("DefaultConnection");
