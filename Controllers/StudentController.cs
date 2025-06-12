@@ -53,7 +53,8 @@ namespace StudentAPI.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(ex);
+                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
+                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
             }
         }
 
@@ -78,7 +79,8 @@ namespace StudentAPI.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(ex);
+                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
+                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
             }
             
         }
@@ -111,7 +113,8 @@ namespace StudentAPI.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(ex);
+                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
+                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
             }
             
         }
@@ -138,7 +141,8 @@ namespace StudentAPI.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(ex);
+                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
+                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
             }
             
         }
@@ -161,7 +165,8 @@ namespace StudentAPI.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(ex);
+                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
+                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
             }
             
         }

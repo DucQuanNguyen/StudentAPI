@@ -19,22 +19,22 @@ namespace StudentAPI.Controllers
             _tokenService = tokenService;
         }
 
-        public int GetLastUserId()
-        {
-            using SqlConnection con = new SqlConnection(_connectionString);
-            SqlDataAdapter adapter = new SqlDataAdapter("GetUser", con);
-            adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
-            DataTable dataTable = new DataTable();
-            adapter.Fill(dataTable);
-            if (dataTable.Rows.Count > 0)
-                return dataTable.Rows.Count;
-            else return 0;
-        }
-        public int autoGenNextUserId()
-        {
-            int Id = GetLastUserId();
-            return Id+1;
-        }
+        //public int GetLastUserId()
+        //{
+        //    using SqlConnection con = new SqlConnection(_connectionString);
+        //    SqlDataAdapter adapter = new SqlDataAdapter("GetUser", con);
+        //    adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
+        //    DataTable dataTable = new DataTable();
+        //    adapter.Fill(dataTable);
+        //    if (dataTable.Rows.Count > 0)
+        //        return dataTable.Rows.Count;
+        //    else return 0;
+        //}
+        //public int autoGenNextUserId()
+        //{
+        //    int Id = GetLastUserId();
+        //    return Id+1;
+        //}
         [HttpPost("register")]
         public IActionResult Register([FromBody] User user)
         {
@@ -45,16 +45,19 @@ namespace StudentAPI.Controllers
                 {
                     return BadRequest("Thông tin đăng ký không hợp lệ!");
                 }
-
+                if(user.Role!="user" && user.Role != "admin")
+                {
+                    user.Role = "user";
+                }
                 using SqlConnection con = new SqlConnection(_connectionString);
                 using SqlCommand cmd = new SqlCommand("Register", con);
                 cmd.CommandType = CommandType.StoredProcedure;
 
                 string hashedPassword = Enpas.HashPassword(user.PassWord);
 
-                cmd.Parameters.AddWithValue("@Id", autoGenNextUserId());
+                cmd.Parameters.AddWithValue("@Id", Guid.NewGuid().ToString());
                 cmd.Parameters.AddWithValue("@UserName", user.UserName);
-                cmd.Parameters.AddWithValue("@PassWord", user.PassWord);
+                cmd.Parameters.AddWithValue("@PassWord", hashedPassword);
                 cmd.Parameters.AddWithValue("@Role", user.Role);
 
                 con.Open();
@@ -64,7 +67,9 @@ namespace StudentAPI.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(ex);
+                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
+                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
+
             }
         }
 
@@ -84,7 +89,7 @@ namespace StudentAPI.Controllers
                 adapter.SelectCommand.Parameters.AddWithValue("@UserName", UserName);
                 DataTable dataTable = new DataTable();
                 adapter.Fill(dataTable);
-                if (dataTable.Rows.Count > 0)
+                if (dataTable.Rows.Count > 0 && !string.IsNullOrEmpty(dataTable.Rows[0]["PassWord"].ToString()))
                 {
                     string hashedInputPassword = Enpas.HashPassword(PassWord);
                     string storedPassword = dataTable.Rows[0]["PassWord"].ToString();
@@ -102,13 +107,15 @@ namespace StudentAPI.Controllers
                     }
 
                 }
-                return Unauthorized("Tên đăng nhập hoặc mật khẩu không đúng!");
+                return Unauthorized(new { Message = "Tên đăng nhập hoặc mật khẩu không đúng!" });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex);
+                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
+                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
+
             }
-            
+
         }
     }
 }

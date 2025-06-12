@@ -32,14 +32,11 @@ insert into [SinhVien] values('SE05102','Le Khanh Van',CAST(N'1999-01-05' AS Dat
 insert into [SinhVien] values('SE05603','Nguyen Phu Dat',CAST(N'2003-04-04' AS Date),'Female','5')
 Go
 CREATE TABLE [dbo].[User](
-	[ID] [int] NOT NULL primary key,
+	[ID] [UNIQUEIDENTIFIER] NOT NULL  primary key,
 	[UserName] [nvarchar](50) NOT NULL,
 	[PassWord] [nvarchar](50) NOT NULL,
 	[Role] [nvarchar](5) NOT NULL,
 )
-GO
-insert into [User] values('user1','@123','user')
-insert into [User] values('admin','@123','admin')
 GO
 CREATE PROC GETLopHoc
 AS
@@ -162,7 +159,7 @@ BEGIN
 END
 GO
 CREATE PROC Register(
-	@ID int,
+	@ID UNIQUEIDENTIFIER,
 	@UserName [nvarchar](50), 
 	@PassWord [nvarchar](50),
 	@Role [nvarchar](5)
