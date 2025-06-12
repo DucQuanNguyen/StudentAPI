@@ -182,8 +182,7 @@ BEGIN
 END
 GO
 CREATE PROC upLogin(
-	@UserName [nvarchar](50), 
-	@PassWord [nvarchar](50)
+	@UserName [nvarchar](50)
 )
 AS
 BEGIN
@@ -192,8 +191,7 @@ BEGIN
       ,[PassWord]
       ,[Role]
   FROM [dbo].[User]
-  WHERE [UserName] = @UserName 
-  AND [PassWord] = @PassWord
+  WHERE [UserName] = @UserName
 END
 GO
 CREATE PROC GetUser

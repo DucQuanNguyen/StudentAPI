@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using StudentAPI.Model;
+using StudentAPI.Service;
 namespace StudentAPI
 {
     public class Program
@@ -15,7 +16,7 @@ namespace StudentAPI
             });
 
             // Add services to the container.
-
+            builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();

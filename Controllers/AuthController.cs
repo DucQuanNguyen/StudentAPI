@@ -1,13 +1,9 @@
 ﻿using System;
 using System.Data;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
-using Microsoft.IdentityModel.Tokens;
 using StudentAPI.Model;
+using StudentAPI.Service;
 
 namespace StudentAPI.Controllers
 {
@@ -16,93 +12,103 @@ namespace StudentAPI.Controllers
     public class AuthController : ControllerBase
     {
         private readonly string _connectionString;
-        public AuthController(IConfiguration configuration)
+        private ITokenService _tokenService;
+        public AuthController(IConfiguration configuration, ITokenService tokenService)
         {
             _connectionString = configuration.GetConnectionString("DefaultConnection");
+            _tokenService = tokenService;
         }
-        private const string SecretKey = "HS256"; // Khóa bí mật để ký JWT
+
         public int GetLastUserId()
         {
-            SqlConnection con = new SqlConnection(_connectionString);
+            using SqlConnection con = new SqlConnection(_connectionString);
             SqlDataAdapter adapter = new SqlDataAdapter("GetUser", con);
             adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
             DataTable dataTable = new DataTable();
             adapter.Fill(dataTable);
-            if(dataTable.Rows.Count > 0 )
-            return dataTable.Rows.Count;
+            if (dataTable.Rows.Count > 0)
+                return dataTable.Rows.Count;
             else return 0;
         }
-        public int autoGenUserId()
+        public int autoGenNextUserId()
         {
             int Id = GetLastUserId();
-            return Id++;
+            return Id+1;
         }
         [HttpPost("register")]
-        public String Register([FromBody] User user)
+        public IActionResult Register([FromBody] User user)
         {
-            SqlConnection con = new SqlConnection(_connectionString);
-            SqlCommand cmd = new SqlCommand("Register", con);
-            cmd.CommandType = CommandType.StoredProcedure;
-            cmd.Parameters.AddWithValue("@Id", autoGenUserId);
-            cmd.Parameters.AddWithValue("@UserName", user.UserName);
-            cmd.Parameters.AddWithValue("@PassWord", user.PassWord);
-            cmd.Parameters.AddWithValue("@Role", user.Role);
+            try
+            {
+                if (user == null || string.IsNullOrWhiteSpace(user.UserName) ||
+                string.IsNullOrWhiteSpace(user.PassWord) || string.IsNullOrWhiteSpace(user.Role))
+                {
+                    return BadRequest("Thông tin đăng ký không hợp lệ!");
+                }
 
-            con.Open();
-            int i = cmd.ExecuteNonQuery();
-            con.Close();
-            string ms;
-            if (i > 0) { ms = "Add success!"; }
-            else { ms = "Error"; }
-            return ms;
+                using SqlConnection con = new SqlConnection(_connectionString);
+                using SqlCommand cmd = new SqlCommand("Register", con);
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                string hashedPassword = Enpas.HashPassword(user.PassWord);
+
+                cmd.Parameters.AddWithValue("@Id", autoGenNextUserId());
+                cmd.Parameters.AddWithValue("@UserName", user.UserName);
+                cmd.Parameters.AddWithValue("@PassWord", user.PassWord);
+                cmd.Parameters.AddWithValue("@Role", user.Role);
+
+                con.Open();
+                int i = cmd.ExecuteNonQuery();
+                con.Close();
+                return i > 0 ? Ok("Đăng ký thành công!") : StatusCode(500, "Lỗi đăng ký.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
 
         [HttpPost("login")]
-        public string Login(string UserName, string PassWord)
+        public IActionResult Login(string UserName, string PassWord)
         {
-            SqlConnection con = new SqlConnection(_connectionString);
-            SqlDataAdapter adapter = new SqlDataAdapter("upLogin", con);
-            adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
-            adapter.SelectCommand.Parameters.AddWithValue("@UserName", UserName);
-            adapter.SelectCommand.Parameters.AddWithValue("@PassWord", PassWord);
-            DataTable dataTable = new DataTable();
-            adapter.Fill(dataTable);
-            User existingUser = new User();
-            if (dataTable.Rows.Count > 0)
+            if (string.IsNullOrWhiteSpace(UserName) || string.IsNullOrWhiteSpace(PassWord))
             {
-                existingUser.UserName = dataTable.Rows[0]["UserName"].ToString();
-                existingUser.PassWord = dataTable.Rows[0]["PassWord"].ToString();
-                var token = GenerateJwtToken(existingUser);
-                return token;
+                return BadRequest("Tên đăng nhập hoặc mật khẩu không được để trống!");
             }
-            else
+            try
             {
-                string message = "Tên đăng nhập hoặc mật khẩu không đúng!";
-                return message;
+                using SqlConnection con = new SqlConnection(_connectionString);
+                SqlDataAdapter adapter = new SqlDataAdapter("upLogin", con);
+                adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
+                adapter.SelectCommand.Parameters.AddWithValue("@UserName", UserName);
+                DataTable dataTable = new DataTable();
+                adapter.Fill(dataTable);
+                if (dataTable.Rows.Count > 0)
+                {
+                    string hashedInputPassword = Enpas.HashPassword(PassWord);
+                    string storedPassword = dataTable.Rows[0]["PassWord"].ToString();
+
+                    if (hashedInputPassword == storedPassword)
+                    {
+                        User existingUser = new User
+                        {
+                            UserName = dataTable.Rows[0]["UserName"].ToString(),
+                            Role = dataTable.Rows[0]["Role"].ToString()
+                        };
+
+                        var token = _tokenService.GenerateToken(existingUser);
+                        return Ok(new { Token = token }); ;
+                    }
+
+                }
+                return Unauthorized("Tên đăng nhập hoặc mật khẩu không đúng!");
             }
-        }
-
-        private string GenerateJwtToken(User user)
-        {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SecretKey));
-            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var claims = new[]
+            catch (Exception ex)
             {
-            new Claim(ClaimTypes.Name, user.UserName),
-            new Claim(ClaimTypes.Role, user.Role)
-        };
-
-            var token = new JwtSecurityToken(
-                issuer: "yourIssuer",
-                audience: "yourAudience",
-                claims: claims,
-                expires: DateTime.UtcNow.AddHours(1),
-                signingCredentials: credentials
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
+                return BadRequest(ex);
+            }
+            
         }
     }
 }

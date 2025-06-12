@@ -18,40 +18,53 @@ namespace StudentAPI.Controllers
         }
 
         [HttpGet]
-        public List<LopHoc> GetLopHoc()
+        public IActionResult  GetLopHoc()
         {
-            SqlConnection con = new SqlConnection(_connectionString);
-            SqlDataAdapter adapter = new SqlDataAdapter("GETLopHoc", con);
-            adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
-            DataTable dataTable = new DataTable();
-            adapter.Fill(dataTable);
-            List<LopHoc> liL = new List<LopHoc>();
-            if (dataTable.Rows.Count > 0)
+            try
             {
-                foreach (DataRow row in dataTable.Rows)
+                using SqlConnection con = new SqlConnection(_connectionString);
+                using SqlDataAdapter adapter = new SqlDataAdapter("GETLopHoc", con);
+                adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
+                DataTable dataTable = new DataTable();
+                adapter.Fill(dataTable);
+                List<LopHoc> liL = new List<LopHoc>();
+                if (dataTable.Rows.Count > 0)
                 {
-                    LopHoc l = new LopHoc();
-                    l.Id = Convert.ToInt32(row[0].ToString());
-                    l.ClassName = row[1].ToString();
-                    liL.Add(l);
+                    foreach (DataRow row in dataTable.Rows)
+                    {
+                        LopHoc l = new LopHoc();
+                        l.Id = Convert.ToInt32(row[0].ToString());
+                        l.ClassName = row[1].ToString();
+                        liL.Add(l);
+                    }
+                }
+                if (liL.Count > 0)
+                {
+                    return Ok(liL);
+                }
+                else
+                {
+                    return NotFound("Không có lớp học.");
                 }
             }
-            if (liL.Count > 0)
-            {
-                return liL;
+            catch (Exception ex) {
+                return BadRequest(ex);
             }
-            else
-            {
-                return null;
-            }
-
         }
 
         [HttpPost]
-        public String CreateLopHoc(LopHoc lopHoc)
+        public IActionResult CreateLopHoc(LopHoc lopHoc)
         {
-            SqlConnection con = new SqlConnection(_connectionString);
-            SqlCommand cmd = new SqlCommand("AddLopHoc",con);
+            try
+            {
+
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
+            using SqlConnection con = new SqlConnection(_connectionString);
+            using SqlCommand cmd = new SqlCommand("AddLopHoc", con);
             cmd.CommandType = CommandType.StoredProcedure;
             cmd.Parameters.AddWithValue("@Id", lopHoc.Id);
             cmd.Parameters.AddWithValue("@ClassName", lopHoc.ClassName);
@@ -59,68 +72,83 @@ namespace StudentAPI.Controllers
             con.Open();
             int i = cmd.ExecuteNonQuery();
             con.Close();
-            string ms;
-            if (i > 0) { ms = "Add success!"; }
-            else { ms = "Error"; }
-            return ms;
+            return i > 0 ? Ok("Add success!") : StatusCode(500, "Error");
         }
 
         [HttpGet("{id}")]
-        public LopHoc GetLopHocById(int id)
+        public IActionResult GetLopHocById(int id)
         {
-            SqlConnection con = new SqlConnection(_connectionString);
-            SqlDataAdapter adapter = new SqlDataAdapter("GETLopHocbyId", con);
-            adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
-            adapter.SelectCommand.Parameters.AddWithValue("@ID", id); 
-            DataTable dataTable = new DataTable();
-            adapter.Fill(dataTable);
-            LopHoc l = new LopHoc();
-            if (dataTable.Rows.Count > 0)
+            try
             {
-                l.Id = Convert.ToInt32(dataTable.Rows[0]["ID"].ToString());
-                l.ClassName = dataTable.Rows[0]["ClassName"].ToString();
-                return l;
+                using SqlConnection con = new SqlConnection(_connectionString);
+                using SqlDataAdapter adapter = new SqlDataAdapter("GETLopHocbyId", con);
+                adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
+                adapter.SelectCommand.Parameters.AddWithValue("@ID", id);
+                DataTable dataTable = new DataTable();
+                adapter.Fill(dataTable);
+                LopHoc l = new LopHoc();
+                if (dataTable.Rows.Count > 0)
+                {
+                    l.Id = Convert.ToInt32(dataTable.Rows[0]["ID"].ToString());
+                    l.ClassName = dataTable.Rows[0]["ClassName"].ToString();
+                    return Ok(l);
+                }
+                else
+                {
+                    return NotFound("Không tìm thấy lớp học với ID được cung cấp.");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                return null;
+                return BadRequest(ex);
             }
-            
         }
 
         [HttpPut("{id}")]
-        public string UpdateLopHoc(int id, LopHoc updatedLopHoc)
+        public IActionResult UpdateLopHoc(int id, LopHoc updatedLopHoc)
         {
-            SqlConnection con = new SqlConnection(_connectionString);
-            SqlCommand cmd = new SqlCommand("UpdateLopHoc", con);
-            cmd.CommandType = CommandType.StoredProcedure;
-            cmd.Parameters.AddWithValue("@Id", id);
-            cmd.Parameters.AddWithValue("@ClassName", updatedLopHoc.ClassName);
+            try
+            {
+                using SqlConnection con = new SqlConnection(_connectionString);
+                using SqlCommand cmd = new SqlCommand("UpdateLopHoc", con);
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@Id", id);
+                cmd.Parameters.AddWithValue("@ClassName", updatedLopHoc.ClassName);
 
-            con.Open();
-            int i = cmd.ExecuteNonQuery();
-            con.Close();
-            string ms;
-            if (i > 0) { ms = "Update success!"; }
-            else { ms = "Error"; }
-            return ms;
+                con.Open();
+                int i = cmd.ExecuteNonQuery();
+                con.Close();
+                return i > 0 ? Ok("Update success!") : StatusCode(500, "Error");
+                
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
+            
+
         }
 
         [HttpDelete("{id}")]
-        public string DeleteLopHoc(int id)
+        public IActionResult DeleteLopHoc(int id)
         {
-            SqlConnection con = new SqlConnection(_connectionString);
-            SqlCommand cmd = new SqlCommand("DeleteLopHoc", con);
-            cmd.CommandType = CommandType.StoredProcedure;
-            cmd.Parameters.AddWithValue("@Id", id);
+            try
+            {
+                using SqlConnection con = new SqlConnection(_connectionString);
+                using SqlCommand cmd = new SqlCommand("DeleteLopHoc", con);
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@Id", id);
 
-            con.Open();
-            int i = cmd.ExecuteNonQuery();
-            con.Close();
-            string ms;
-            if (i > 0) { ms = "Delete success!"; }
-            else { ms = "Error"; }
-            return ms;
+                con.Open();
+                int i = cmd.ExecuteNonQuery();
+                con.Close();
+                return i > 0 ? Ok("Delete success!") : StatusCode(500, "Error");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
+            
         }
 
     }
