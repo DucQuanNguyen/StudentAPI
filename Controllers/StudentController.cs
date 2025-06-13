@@ -1,14 +1,17 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Data;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
-using System.Configuration;
+using Microsoft.Extensions.Logging;
 using StudentAPI.Model;
-using System.Data;
 
 namespace StudentAPI.Controllers
-{
-    [Route("api/[controller]")]
+{ 
     [ApiController]
+    [Route("api/[controller]")]
+    [Authorize]
     public class StudentController : ControllerBase
     {
         // Stored Procedure Names
@@ -32,7 +35,8 @@ namespace StudentAPI.Controllers
             _connectionString = configuration.GetConnectionString("DefaultConnection");
             _logger = logger;
         }
-
+        
+        // All authenticated users can view Students
         [HttpGet]
         public async Task<IActionResult> GetSinhViens()
         {
@@ -58,22 +62,33 @@ namespace StudentAPI.Controllers
                     };
                     liS.Add(s);
                 }
-                return liS.Count > 0 ? Ok(liS) : NotFound("No students found.");
+                return liS.Count > 0
+                    ? Ok(liS)
+                    : NotFound(new { message = "No students found." });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while retrieving students.");
-                return StatusCode(500, "An unexpected error occurred while retrieving students. Please try again later.");
+                return StatusCode(500, new { message = "An unexpected error occurred while retrieving students. Please try again later." });
             }
         }
 
+        // Only admins can add student
+        [Authorize(Roles = "admin")]
         [HttpPost]
         public async Task<IActionResult> CreateSinhVien([FromBody] SinhVien sinhVien)
         {
             if (sinhVien == null)
-                return BadRequest("Student data is missing.");
+                return BadRequest(new { message = "Student data is missing." });
+
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToArray();
+                return BadRequest(new { message = "Validation failed.", errors });
+            }
 
             try
             {
@@ -82,11 +97,11 @@ namespace StudentAPI.Controllers
                 {
                     CommandType = CommandType.StoredProcedure
                 };
-                cmd.Parameters.AddWithValue(PARAM_STUDENT_ID, sinhVien.StudentId);
-                cmd.Parameters.AddWithValue(PARAM_STUDENT_NAME, sinhVien.StudentName);
-                cmd.Parameters.AddWithValue(PARAM_BIRTH_DATE, sinhVien.BirthDate);
-                cmd.Parameters.AddWithValue(PARAM_GENDER, sinhVien.Gender);
-                cmd.Parameters.AddWithValue(PARAM_CLASS_ID, sinhVien.ClassId);
+                cmd.Parameters.Add(PARAM_STUDENT_ID, SqlDbType.NVarChar, 50).Value = sinhVien.StudentId;
+                cmd.Parameters.Add(PARAM_STUDENT_NAME, SqlDbType.NVarChar, 100).Value = sinhVien.StudentName;
+                cmd.Parameters.Add(PARAM_BIRTH_DATE, SqlDbType.Date).Value = sinhVien.BirthDate;
+                cmd.Parameters.Add(PARAM_GENDER, SqlDbType.NVarChar, 10).Value = sinhVien.Gender;
+                cmd.Parameters.Add(PARAM_CLASS_ID, SqlDbType.Int).Value = sinhVien.ClassId;
 
                 await con.OpenAsync();
                 int i = await cmd.ExecuteNonQueryAsync();
@@ -97,7 +112,7 @@ namespace StudentAPI.Controllers
                     {
                         CommandType = CommandType.StoredProcedure
                     };
-                    getCmd.Parameters.AddWithValue(PARAM_STUDENT_ID, sinhVien.StudentId);
+                    getCmd.Parameters.Add(PARAM_STUDENT_ID, SqlDbType.NVarChar, 50).Value = sinhVien.StudentId;
                     using SqlDataReader reader = await getCmd.ExecuteReaderAsync();
                     if (await reader.ReadAsync())
                     {
@@ -112,15 +127,16 @@ namespace StudentAPI.Controllers
                         return CreatedAtAction(nameof(GetSinhVienById), new { studentId = created.StudentId }, created);
                     }
                 }
-                return StatusCode(500, "Failed to add student. The student may already exist.");
+                return StatusCode(500, new { message = "Failed to add student. The student may already exist." });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while adding a student.");
-                return StatusCode(500, "An unexpected error occurred while adding the student. Please try again later.");
+                return StatusCode(500, new { message = "An unexpected error occurred while adding the student. Please try again later." });
             }
         }
 
+        // All authenticated users can view Students by student ID 
         [HttpGet("{studentId}")]
         public async Task<IActionResult> GetSinhVienById(string studentId)
         {
@@ -131,7 +147,7 @@ namespace StudentAPI.Controllers
                 {
                     CommandType = CommandType.StoredProcedure
                 };
-                cmd.Parameters.AddWithValue(PARAM_STUDENT_ID, studentId);
+                cmd.Parameters.Add(PARAM_STUDENT_ID, SqlDbType.NVarChar, 50).Value = studentId;
                 await con.OpenAsync();
                 using SqlDataReader reader = await cmd.ExecuteReaderAsync();
                 if (await reader.ReadAsync())
@@ -148,23 +164,32 @@ namespace StudentAPI.Controllers
                 }
                 else
                 {
-                    return NotFound("No student found with the provided ID.");
+                    return NotFound(new { message = "No student found with the provided ID." });
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while retrieving student by ID.");
-                return StatusCode(500, "An unexpected error occurred while retrieving the student. Please try again later.");
+                return StatusCode(500, new { message = "An unexpected error occurred while retrieving the student. Please try again later." });
             }
         }
 
+        // Only admins can update student
+        [Authorize(Roles = "admin")]
         [HttpPut("{studentId}")]
         public async Task<IActionResult> UpdateSinhVien(string studentId, [FromBody] SinhVien updatedSinhVien)
         {
             if (updatedSinhVien == null)
-                return BadRequest("Student data is missing.");
+                return BadRequest(new { message = "Student data is missing." });
+
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToArray();
+                return BadRequest(new { message = "Validation failed.", errors });
+            }
 
             try
             {
@@ -173,11 +198,11 @@ namespace StudentAPI.Controllers
                 {
                     CommandType = CommandType.StoredProcedure
                 };
-                cmd.Parameters.AddWithValue(PARAM_STUDENT_ID, studentId);
-                cmd.Parameters.AddWithValue(PARAM_STUDENT_NAME, updatedSinhVien.StudentName);
-                cmd.Parameters.AddWithValue(PARAM_BIRTH_DATE, updatedSinhVien.BirthDate);
-                cmd.Parameters.AddWithValue(PARAM_GENDER, updatedSinhVien.Gender);
-                cmd.Parameters.AddWithValue(PARAM_CLASS_ID, updatedSinhVien.ClassId);
+                cmd.Parameters.Add(PARAM_STUDENT_ID, SqlDbType.NVarChar, 50).Value = studentId;
+                cmd.Parameters.Add(PARAM_STUDENT_NAME, SqlDbType.NVarChar, 100).Value = updatedSinhVien.StudentName;
+                cmd.Parameters.Add(PARAM_BIRTH_DATE, SqlDbType.Date).Value = updatedSinhVien.BirthDate;
+                cmd.Parameters.Add(PARAM_GENDER, SqlDbType.NVarChar, 10).Value = updatedSinhVien.Gender;
+                cmd.Parameters.Add(PARAM_CLASS_ID, SqlDbType.Int).Value = updatedSinhVien.ClassId;
 
                 await con.OpenAsync();
                 int i = await cmd.ExecuteNonQueryAsync();
@@ -188,7 +213,7 @@ namespace StudentAPI.Controllers
                     {
                         CommandType = CommandType.StoredProcedure
                     };
-                    getCmd.Parameters.AddWithValue(PARAM_STUDENT_ID, studentId);
+                    getCmd.Parameters.Add(PARAM_STUDENT_ID, SqlDbType.NVarChar, 50).Value = studentId;
                     using SqlDataReader reader = await getCmd.ExecuteReaderAsync();
                     if (await reader.ReadAsync())
                     {
@@ -203,15 +228,17 @@ namespace StudentAPI.Controllers
                         return Ok(updated);
                     }
                 }
-                return NotFound("No student found with the provided ID.");
+                return NotFound(new { message = "No student found with the provided ID." });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while updating the student.");
-                return StatusCode(500, "An unexpected error occurred while updating the student. Please try again later.");
+                return StatusCode(500, new { message = "An unexpected error occurred while updating the student. Please try again later." });
             }
         }
 
+        // Only admins can delete student
+        [Authorize(Roles = "admin")]
         [HttpDelete("{studentId}")]
         public async Task<IActionResult> DeleteSinhVien(string studentId)
         {
@@ -226,7 +253,7 @@ namespace StudentAPI.Controllers
                         CommandType = CommandType.StoredProcedure
                     })
                     {
-                        getCmd.Parameters.AddWithValue(PARAM_STUDENT_ID, studentId);
+                        getCmd.Parameters.Add(PARAM_STUDENT_ID, SqlDbType.NVarChar, 50).Value = studentId;
                         await con.OpenAsync();
                         using (SqlDataReader reader = await getCmd.ExecuteReaderAsync())
                         {
@@ -245,7 +272,7 @@ namespace StudentAPI.Controllers
                     }
 
                     if (deleted == null)
-                        return NotFound("No student found with the provided ID.");
+                        return NotFound(new { message = "No student found with the provided ID." });
 
                     // Delete the entity
                     using (SqlCommand cmd = new SqlCommand(SP_DELETE, con)
@@ -253,20 +280,19 @@ namespace StudentAPI.Controllers
                         CommandType = CommandType.StoredProcedure
                     })
                     {
-                        cmd.Parameters.AddWithValue(PARAM_STUDENT_ID, studentId);
-                        await con.OpenAsync();
+                        cmd.Parameters.Add(PARAM_STUDENT_ID, SqlDbType.NVarChar, 50).Value = studentId;
                         int i = await cmd.ExecuteNonQueryAsync();
                         if (i > 0)
                             return Ok(deleted); // Return the deleted entity
                         else
-                            return NotFound("No student found with the provided ID.");
+                            return NotFound(new { message = "No student found with the provided ID." });
                     }
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while deleting the student.");
-                return StatusCode(500, "An unexpected error occurred while deleting the student. Please try again later.");
+                return StatusCode(500, new { message = "An unexpected error occurred while deleting the student. Please try again later." });
             }
         }
     }

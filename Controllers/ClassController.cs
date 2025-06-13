@@ -1,15 +1,17 @@
 ﻿using System.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
 using StudentAPI.Model;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
+using System.Linq;
+using Microsoft.AspNetCore.Authorization;
 
 namespace StudentAPI.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
+    [Authorize] // All endpoints require authentication by default
     public class ClassController : ControllerBase
     {
         // Stored Procedure Names
@@ -31,6 +33,7 @@ namespace StudentAPI.Controllers
             _logger = logger;
         }
 
+        // All authenticated users can view classes
         [HttpGet]
         public async Task<IActionResult> GetLopHoc()
         {
@@ -53,22 +56,33 @@ namespace StudentAPI.Controllers
                     };
                     liL.Add(l);
                 }
-                return liL.Count > 0 ? Ok(liL) : NotFound("No classes found.");
+                return liL.Count > 0
+                    ? Ok(liL)
+                    : NotFound(new { message = "No classes found." });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while retrieving classes.");
-                return StatusCode(500, "An unexpected error occurred while retrieving classes. Please try again later.");
+                return StatusCode(500, new { message = "An unexpected error occurred while retrieving classes. Please try again later." });
             }
         }
 
+        // Only admins can create classes
+        [Authorize(Roles = "admin")]
         [HttpPost]
         public async Task<IActionResult> CreateLopHoc([FromBody] LopHoc lopHoc)
         {
             if (lopHoc == null)
-                return BadRequest("Class data is missing.");
+                return BadRequest(new { message = "Class data is missing." });
+
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToArray();
+                return BadRequest(new { message = "Validation failed.", errors });
+            }
 
             try
             {
@@ -77,20 +91,24 @@ namespace StudentAPI.Controllers
                 {
                     CommandType = CommandType.StoredProcedure
                 };
-                cmd.Parameters.AddWithValue(PARAM_ID, lopHoc.Id);
-                cmd.Parameters.AddWithValue(PARAM_CLASS_NAME, lopHoc.ClassName);
+                cmd.Parameters.Add(PARAM_CLASS_NAME, SqlDbType.NVarChar, 100).Value = lopHoc.ClassName;
+
+                // Output parameter for new ID
+                var idParam = cmd.Parameters.Add(PARAM_ID, SqlDbType.Int);
+                idParam.Direction = ParameterDirection.Output;
 
                 await con.OpenAsync();
                 int i = await cmd.ExecuteNonQueryAsync();
 
-                if (i > 0)
+                if (i > 0 && idParam.Value != DBNull.Value)
                 {
+                    int newId = (int)idParam.Value;
                     // Fetch the created entity
                     using SqlCommand getCmd = new SqlCommand(SP_GET_BY_ID, con)
                     {
                         CommandType = CommandType.StoredProcedure
                     };
-                    getCmd.Parameters.AddWithValue(PARAM_ID, lopHoc.Id);
+                    getCmd.Parameters.Add(PARAM_ID, SqlDbType.Int).Value = newId;
                     using SqlDataReader reader = await getCmd.ExecuteReaderAsync();
                     if (await reader.ReadAsync())
                     {
@@ -102,15 +120,16 @@ namespace StudentAPI.Controllers
                         return CreatedAtAction(nameof(GetLopHocById), new { id = created.Id }, created);
                     }
                 }
-                return StatusCode(500, "Failed to add class. The class may already exist.");
+                return StatusCode(500, new { message = "Failed to add class. The class may already exist." });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while adding a class.");
-                return StatusCode(500, "An unexpected error occurred while adding the class. Please try again later.");
+                return StatusCode(500, new { message = "An unexpected error occurred while adding the class. Please try again later." });
             }
         }
 
+        // All authenticated users can view a class by ID
         [HttpGet("{id}")]
         public async Task<IActionResult> GetLopHocById(int id)
         {
@@ -121,7 +140,7 @@ namespace StudentAPI.Controllers
                 {
                     CommandType = CommandType.StoredProcedure
                 };
-                cmd.Parameters.AddWithValue(PARAM_ID, id);
+                cmd.Parameters.Add(PARAM_ID, SqlDbType.Int).Value = id;
                 await con.OpenAsync();
                 using SqlDataReader reader = await cmd.ExecuteReaderAsync();
                 if (await reader.ReadAsync())
@@ -135,23 +154,32 @@ namespace StudentAPI.Controllers
                 }
                 else
                 {
-                    return NotFound("No class found with the provided ID.");
+                    return NotFound(new { message = "No class found with the provided ID." });
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while retrieving class by ID.");
-                return StatusCode(500, "An unexpected error occurred while retrieving the class. Please try again later.");
+                return StatusCode(500, new { message = "An unexpected error occurred while retrieving the class. Please try again later." });
             }
         }
 
+        // Only admins can update classes
+        [Authorize(Roles = "admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateLopHoc(int id, [FromBody] LopHoc updatedLopHoc)
         {
             if (updatedLopHoc == null)
-                return BadRequest("Class data is missing.");
+                return BadRequest(new { message = "Class data is missing." });
+
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToArray();
+                return BadRequest(new { message = "Validation failed.", errors });
+            }
 
             try
             {
@@ -160,8 +188,8 @@ namespace StudentAPI.Controllers
                 {
                     CommandType = CommandType.StoredProcedure
                 };
-                cmd.Parameters.AddWithValue(PARAM_ID, id);
-                cmd.Parameters.AddWithValue(PARAM_CLASS_NAME, updatedLopHoc.ClassName);
+                cmd.Parameters.Add(PARAM_ID, SqlDbType.Int).Value = id;
+                cmd.Parameters.Add(PARAM_CLASS_NAME, SqlDbType.NVarChar, 100).Value = updatedLopHoc.ClassName;
 
                 await con.OpenAsync();
                 int i = await cmd.ExecuteNonQueryAsync();
@@ -172,7 +200,7 @@ namespace StudentAPI.Controllers
                     {
                         CommandType = CommandType.StoredProcedure
                     };
-                    getCmd.Parameters.AddWithValue(PARAM_ID, id);
+                    getCmd.Parameters.Add(PARAM_ID, SqlDbType.Int).Value = id;
                     using SqlDataReader reader = await getCmd.ExecuteReaderAsync();
                     if (await reader.ReadAsync())
                     {
@@ -184,15 +212,17 @@ namespace StudentAPI.Controllers
                         return Ok(updated);
                     }
                 }
-                return NotFound("No class found with the provided ID.");
+                return NotFound(new { message = "No class found with the provided ID." });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while updating the class.");
-                return StatusCode(500, "An unexpected error occurred while updating the class. Please try again later.");
+                return StatusCode(500, new { message = "An unexpected error occurred while updating the class. Please try again later." });
             }
         }
 
+        // Only admins can delete classes
+        [Authorize(Roles = "admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteLopHoc(int id)
         {
@@ -209,7 +239,7 @@ namespace StudentAPI.Controllers
                         CommandType = CommandType.StoredProcedure
                     })
                     {
-                        getCmd.Parameters.AddWithValue(PARAM_ID, id);
+                        getCmd.Parameters.Add(PARAM_ID, SqlDbType.Int).Value = id;
                         using (SqlDataReader reader = await getCmd.ExecuteReaderAsync())
                         {
                             if (await reader.ReadAsync())
@@ -232,7 +262,7 @@ namespace StudentAPI.Controllers
                         CommandType = CommandType.StoredProcedure
                     })
                     {
-                        cmd.Parameters.AddWithValue(PARAM_ID, id);
+                        cmd.Parameters.Add(PARAM_ID, SqlDbType.Int).Value = id;
                         int i = await cmd.ExecuteNonQueryAsync();
                         if (i > 0)
                             return Ok(deleted); // Return the deleted entity
@@ -244,7 +274,7 @@ namespace StudentAPI.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while deleting the class.");
-                return StatusCode(500, "An unexpected error occurred while deleting the class. Please try again later.");
+                return StatusCode(500, new { message = "An unexpected error occurred while deleting the class. Please try again later." });
             }
         }
     }

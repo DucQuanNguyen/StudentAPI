@@ -5,7 +5,6 @@ namespace StudentAPI.Model;
 
 public partial class LopHoc
 {
-    [Required]
     public int Id { get; set; }
 
     [Required]
