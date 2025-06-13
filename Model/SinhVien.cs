@@ -1,19 +1,24 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace StudentAPI.Model;
 
 public partial class SinhVien
 {
-    public string StudentId { get; set; } = null!;
+    [Required]
+    public string StudentId { get; set; }
 
-    public string StudentName { get; set; } = null!;
+    [Required]
+    [StringLength(100)]
+    public string StudentName { get; set; }
 
+    [Required]
     public DateTime BirthDate { get; set; }
 
-    public string? Gender { get; set; }
+    [Required]
+    [RegularExpression("Nam|Nu", ErrorMessage = "Gender must be 'Nam' or 'Nu'.")]
+    public string Gender { get; set; }
 
-    public int? ClassId { get; set; }
-
-    public virtual LopHoc? Class { get; set; }
+    [Required]
+    public int ClassId { get; set; }
 }

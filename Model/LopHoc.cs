@@ -1,13 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace StudentAPI.Model;
 
 public partial class LopHoc
 {
-    public int Id { get; set; }
+    [Required]
+    public int ClassId { get; set; }
 
-    public string ClassName { get; set; } = null!;
-
-    public virtual ICollection<SinhVien> SinhViens { get; set; } = new List<SinhVien>();
+    [Required]
+    [StringLength(100)]
+    public string ClassName { get; set; }
 }
