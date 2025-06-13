@@ -24,14 +24,23 @@ namespace StudentAPI.Services
             _connectionString = configuration.GetConnectionString("DefaultConnection");
         }
 
+        private async Task<SqlCommand> CreateCommandAsync(string storedProcedure)
+        {
+            var connection = new SqlConnection(_connectionString);
+            var command = new SqlCommand(storedProcedure, connection)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+            await connection.OpenAsync().ConfigureAwait(false);
+            return command;
+        }
+
         public async Task<List<SinhVien>> GetAllAsync()
         {
             var students = new List<SinhVien>();
-            using SqlConnection con = new SqlConnection(_connectionString);
-            using SqlCommand cmd = new SqlCommand(SP_GET_ALL, con) { CommandType = CommandType.StoredProcedure };
-            await con.OpenAsync();
-            using SqlDataReader reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            await using var cmd = await CreateCommandAsync(SP_GET_ALL).ConfigureAwait(false);
+            await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+            while (await reader.ReadAsync().ConfigureAwait(false))
             {
                 students.Add(MapSinhVien(reader));
             }
@@ -40,73 +49,66 @@ namespace StudentAPI.Services
 
         public async Task<SinhVien?> GetByIdAsync(string studentId)
         {
-            using SqlConnection con = new SqlConnection(_connectionString);
-            using SqlCommand cmd = new SqlCommand(SP_GET_BY_ID, con) { CommandType = CommandType.StoredProcedure };
-            cmd.Parameters.Add(PARAM_STUDENT_ID, SqlDbType.NVarChar, 50).Value = studentId;
-            await con.OpenAsync();
-            using SqlDataReader reader = await cmd.ExecuteReaderAsync();
-            if (await reader.ReadAsync())
+            await using var cmd = await CreateCommandAsync(SP_GET_BY_ID).ConfigureAwait(false);
+            cmd.Parameters.AddWithValue(PARAM_STUDENT_ID, studentId);
+            await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+            if (await reader.ReadAsync().ConfigureAwait(false))
                 return MapSinhVien(reader);
             return null;
         }
 
         public async Task<SinhVien?> CreateAsync(SinhVien sinhVien)
         {
-            using SqlConnection con = new SqlConnection(_connectionString);
-            using SqlCommand cmd = new SqlCommand(SP_ADD, con) { CommandType = CommandType.StoredProcedure };
-            cmd.Parameters.Add(PARAM_STUDENT_ID, SqlDbType.NVarChar, 50).Value = sinhVien.StudentId;
-            cmd.Parameters.Add(PARAM_STUDENT_NAME, SqlDbType.NVarChar, 100).Value = sinhVien.StudentName;
-            cmd.Parameters.Add(PARAM_BIRTH_DATE, SqlDbType.Date).Value = sinhVien.BirthDate;
-            cmd.Parameters.Add(PARAM_GENDER, SqlDbType.NVarChar, 10).Value = sinhVien.Gender;
-            cmd.Parameters.Add(PARAM_CLASS_ID, SqlDbType.Int).Value = sinhVien.ClassId;
+            await using var cmd = await CreateCommandAsync(SP_ADD).ConfigureAwait(false);
+            AddSinhVienParameters(cmd, sinhVien);
 
-            await con.OpenAsync();
-            int i = await cmd.ExecuteNonQueryAsync();
+            int i = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             if (i > 0)
-                return await GetByIdAsync(sinhVien.StudentId);
+                return await GetByIdAsync(sinhVien.StudentId).ConfigureAwait(false);
             return null;
         }
 
         public async Task<SinhVien?> UpdateAsync(string studentId, SinhVien updatedSinhVien)
         {
-            using SqlConnection con = new SqlConnection(_connectionString);
-            using SqlCommand cmd = new SqlCommand(SP_UPDATE, con) { CommandType = CommandType.StoredProcedure };
-            cmd.Parameters.Add(PARAM_STUDENT_ID, SqlDbType.NVarChar, 50).Value = studentId;
-            cmd.Parameters.Add(PARAM_STUDENT_NAME, SqlDbType.NVarChar, 100).Value = updatedSinhVien.StudentName;
-            cmd.Parameters.Add(PARAM_BIRTH_DATE, SqlDbType.Date).Value = updatedSinhVien.BirthDate;
-            cmd.Parameters.Add(PARAM_GENDER, SqlDbType.NVarChar, 10).Value = updatedSinhVien.Gender;
-            cmd.Parameters.Add(PARAM_CLASS_ID, SqlDbType.Int).Value = updatedSinhVien.ClassId;
-
-            await con.OpenAsync();
-            int i = await cmd.ExecuteNonQueryAsync();
+            await using var cmd = await CreateCommandAsync(SP_UPDATE).ConfigureAwait(false);
+            cmd.Parameters.AddWithValue(PARAM_STUDENT_ID, studentId);
+            AddSinhVienParameters(cmd, updatedSinhVien, includeId: false);
+            int i = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             if (i > 0)
-                return await GetByIdAsync(studentId);
+                return await GetByIdAsync(studentId).ConfigureAwait(false);
             return null;
         }
 
         public async Task<SinhVien?> DeleteAsync(string studentId)
         {
-            using SqlConnection con = new SqlConnection(_connectionString);
-            // Get before delete
-            var existing = await GetByIdAsync(studentId);
+            var existing = await GetByIdAsync(studentId).ConfigureAwait(false);
             if (existing == null) return null;
 
-            using SqlCommand cmd = new SqlCommand(SP_DELETE, con) { CommandType = CommandType.StoredProcedure };
-            cmd.Parameters.Add(PARAM_STUDENT_ID, SqlDbType.NVarChar, 50).Value = studentId;
-            await con.OpenAsync();
-            int i = await cmd.ExecuteNonQueryAsync();
+            await using var cmd = await CreateCommandAsync(SP_DELETE).ConfigureAwait(false);
+            cmd.Parameters.AddWithValue(PARAM_STUDENT_ID, studentId);
+            int i = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             return i > 0 ? existing : null;
+        }
+
+        private void AddSinhVienParameters(SqlCommand cmd, SinhVien sinhVien, bool includeId = true)
+        {
+            if (includeId)
+                cmd.Parameters.AddWithValue(PARAM_STUDENT_ID, sinhVien.StudentId);
+            cmd.Parameters.AddWithValue(PARAM_STUDENT_NAME, sinhVien.StudentName);
+            cmd.Parameters.AddWithValue(PARAM_BIRTH_DATE, sinhVien.BirthDate);
+            cmd.Parameters.AddWithValue(PARAM_GENDER, sinhVien.Gender);
+            cmd.Parameters.AddWithValue(PARAM_CLASS_ID, sinhVien.ClassId);
         }
 
         private SinhVien MapSinhVien(SqlDataReader reader)
         {
             return new SinhVien
             {
-                StudentId = reader["StudentId"].ToString(),
-                StudentName = reader["StudentName"].ToString(),
-                BirthDate = Convert.ToDateTime(reader["BirthDate"]),
-                Gender = reader["Gender"].ToString(),
-                ClassId = Convert.ToInt32(reader["ClassId"])
+                StudentId = reader["StudentId"] as string ?? string.Empty,
+                StudentName = reader["StudentName"] as string ?? string.Empty,
+                BirthDate = reader["BirthDate"] is DateTime dt ? dt : Convert.ToDateTime(reader["BirthDate"]),
+                Gender = reader["Gender"] as string ?? string.Empty,
+                ClassId = reader["ClassId"] is int id ? id : Convert.ToInt32(reader["ClassId"])
             };
         }
     }
