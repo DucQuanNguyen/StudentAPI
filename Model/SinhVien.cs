@@ -16,7 +16,7 @@ public partial class SinhVien
     public DateTime BirthDate { get; set; }
 
     [Required]
-    [RegularExpression("Nam|Nu", ErrorMessage = "Gender must be 'Nam' or 'Nu'.")]
+    [RegularExpression("Male|Female", ErrorMessage = "Gender must be 'Male' or 'Female'.")]
     public string Gender { get; set; }
 
     [Required]

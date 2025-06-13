@@ -24,6 +24,10 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddScoped<StudentAPI.Services.StudentService>();
+builder.Services.AddScoped<StudentAPI.Services.ClassService>();
+builder.Services.AddScoped<StudentAPI.Service.AuthService>();
+builder.Services.AddScoped<StudentAPI.Service.ITokenService, StudentAPI.Service.TokenService>();
 
 var app = builder.Build();
 
