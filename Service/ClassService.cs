@@ -1,12 +1,12 @@
 ﻿using System.Data;
 using Microsoft.Data.SqlClient;
 using StudentAPI.Model;
+using StudentAPI.Service;
 
 namespace StudentAPI.Services
 {
-    public class ClassService
+    public class ClassService : BaseService, IClassService
     {
-        private readonly string _connectionString;
         private const string SP_GET_ALL = "GETLopHoc";
         private const string SP_GET_BY_ID = "GETLopHocbyId";
         private const string SP_ADD = "AddLopHoc";
@@ -16,19 +16,8 @@ namespace StudentAPI.Services
         private const string PARAM_CLASS_NAME = "@ClassName";
 
         public ClassService(IConfiguration configuration)
+            : base(configuration)
         {
-            _connectionString = configuration.GetConnectionString("DefaultConnection");
-        }
-
-        private async Task<SqlCommand> CreateCommandAsync(string storedProcedure)
-        {
-            var connection = new SqlConnection(_connectionString);
-            var command = new SqlCommand(storedProcedure, connection)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
-            await connection.OpenAsync().ConfigureAwait(false);
-            return command;
         }
 
         public async Task<List<LopHoc>> GetAllAsync()

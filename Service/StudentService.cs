@@ -1,12 +1,12 @@
 ﻿using System.Data;
 using Microsoft.Data.SqlClient;
 using StudentAPI.Model;
+using StudentAPI.Service;
 
 namespace StudentAPI.Services
 {
-    public class StudentService
+    public class StudentService : BaseService, IStudentService
     {
-        private readonly string _connectionString;
         private const string SP_GET_ALL = "GETSinhVien";
         private const string SP_GET_BY_ID = "GETSinhVienById";
         private const string SP_ADD = "AddSinhVien";
@@ -20,19 +20,8 @@ namespace StudentAPI.Services
         private const string PARAM_CLASS_ID = "@ClassID";
 
         public StudentService(IConfiguration configuration)
+            : base(configuration)
         {
-            _connectionString = configuration.GetConnectionString("DefaultConnection");
-        }
-
-        private async Task<SqlCommand> CreateCommandAsync(string storedProcedure)
-        {
-            var connection = new SqlConnection(_connectionString);
-            var command = new SqlCommand(storedProcedure, connection)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
-            await connection.OpenAsync().ConfigureAwait(false);
-            return command;
         }
 
         public async Task<List<SinhVien>> GetAllAsync()

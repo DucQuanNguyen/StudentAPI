@@ -5,26 +5,14 @@ using StudentAPI.Model;
 
 namespace StudentAPI.Service
 {
-    public class AuthService
+    public class AuthService : BaseService, IAuthService
     {
-        private readonly string _connectionString;
         private readonly ITokenService _tokenService;
 
         public AuthService(IConfiguration configuration, ITokenService tokenService)
+            : base(configuration)
         {
-            _connectionString = configuration.GetConnectionString("DefaultConnection");
             _tokenService = tokenService;
-        }
-
-        private async Task<SqlCommand> CreateCommandAsync(string storedProcedure)
-        {
-            var connection = new SqlConnection(_connectionString);
-            var command = new SqlCommand(storedProcedure, connection)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
-            await connection.OpenAsync().ConfigureAwait(false);
-            return command;
         }
 
         public async Task<bool> RegisterAsync(User user)
