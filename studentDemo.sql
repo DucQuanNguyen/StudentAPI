@@ -84,7 +84,7 @@ CREATE PROC DeleteLopHoc(
 AS
 BEGIN
 	DELETE FROM [dbo].[LopHoc]
-	WHERE [ID] = @ID
+	WHERE [ID] = @ID AND NOT EXISTS (SELECT * FROM [dbo].[SinhVien] WHERE [ClassID] = @ID)
 END
 Go
 CREATE PROC GETSinhVien

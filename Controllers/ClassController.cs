@@ -12,13 +12,15 @@ namespace StudentAPI.Controllers
     public class ClassController : ControllerBase
     {
         private readonly string _connectionString;
-        public ClassController(IConfiguration configuration)
+        private readonly ILogger<ClassController> _logger;
+        public ClassController(IConfiguration configuration, ILogger<ClassController> logger)
         {
             _connectionString = configuration.GetConnectionString("DefaultConnection");
+            _logger = logger;
         }
 
         [HttpGet]
-        public IActionResult  GetLopHoc()
+        public IActionResult GetLopHoc()
         {
             try
             {
@@ -44,12 +46,12 @@ namespace StudentAPI.Controllers
                 }
                 else
                 {
-                    return NotFound("Không có lớp học.");
+                    return NotFound("No class found");
                 }
             }
             catch (Exception ex) {
-                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
-                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
+                _logger.LogError(ex, "An error occurred while retrieving classes.");
+                return StatusCode(500, "An unexpected error occurred while retrieving classes. Please try again later.");
             }
         }
 
@@ -67,11 +69,12 @@ namespace StudentAPI.Controllers
                 con.Open();
                 int i = cmd.ExecuteNonQuery();
                 con.Close();
-                return i > 0 ? Ok("Add success!") : StatusCode(500, "Error");
+                return i > 0 ? Ok("Class added successfully!") : StatusCode(500, "Failed to add class. The class may already exist.");
             }
             catch (Exception ex)
             {
-                return BadRequest(ex);
+                _logger.LogError(ex, "An error occurred while adding a class.");
+                return StatusCode(500, "An unexpected error occurred while adding the class. Please try again later.");
             }
             
         }
@@ -96,13 +99,13 @@ namespace StudentAPI.Controllers
                 }
                 else
                 {
-                    return NotFound("Không tìm thấy lớp học với ID được cung cấp.");
+                    return NotFound("No class found with the provided ID.");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
-                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
+                _logger.LogError(ex, "An error occurred while retrieving class by ID.");
+                return StatusCode(500, "An unexpected error occurred while retrieving the class. Please try again later.");
             }
         }
 
@@ -111,6 +114,14 @@ namespace StudentAPI.Controllers
         {
             try
             {
+                if (updatedLopHoc == null)
+                {
+                    return BadRequest("Class data is missing.");
+                }
+                if (string.IsNullOrWhiteSpace(updatedLopHoc.ClassName))
+                {
+                    return BadRequest("Class name is required.");
+                }
                 using SqlConnection con = new SqlConnection(_connectionString);
                 using SqlCommand cmd = new SqlCommand("UpdateLopHoc", con);
                 cmd.CommandType = CommandType.StoredProcedure;
@@ -120,16 +131,13 @@ namespace StudentAPI.Controllers
                 con.Open();
                 int i = cmd.ExecuteNonQuery();
                 con.Close();
-                return i > 0 ? Ok("Update success!") : StatusCode(500, "Error");
-                
+                return i > 0 ? Ok("Class updated successfully!") : StatusCode(500, "Failed to update class. The class may not exist.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
-                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
+                _logger.LogError(ex, "An error occurred while updating the class.");
+                return StatusCode(500, "An unexpected error occurred while updating the class. Please try again later.");
             }
-            
-
         }
 
         [HttpDelete("{id}")]
@@ -145,15 +153,13 @@ namespace StudentAPI.Controllers
                 con.Open();
                 int i = cmd.ExecuteNonQuery();
                 con.Close();
-                return i > 0 ? Ok("Delete success!") : StatusCode(500, "Error");
+                return i > 0 ? Ok("Class deleted successfully!") : NotFound("No class found with the provided ID.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
-                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
+                _logger.LogError(ex, "An error occurred while deleting the class.");
+                return StatusCode(500, "An unexpected error occurred while deleting the class. Please try again later.");
             }
-            
         }
-
     }
 }

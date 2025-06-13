@@ -2,6 +2,7 @@
 using System.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using StudentAPI.Model;
 using StudentAPI.Service;
 
@@ -13,10 +14,12 @@ namespace StudentAPI.Controllers
     {
         private readonly string _connectionString;
         private ITokenService _tokenService;
-        public AuthController(IConfiguration configuration, ITokenService tokenService)
+        private readonly ILogger<AuthController> _logger;
+        public AuthController(IConfiguration configuration, ITokenService tokenService, ILogger<AuthController> logger)
         {
             _connectionString = configuration.GetConnectionString("DefaultConnection");
             _tokenService = tokenService;
+            _logger = logger;
         }
 
         //public int GetLastUserId()
@@ -40,12 +43,23 @@ namespace StudentAPI.Controllers
         {
             try
             {
-                if (user == null || string.IsNullOrWhiteSpace(user.UserName) ||
-                string.IsNullOrWhiteSpace(user.PassWord) || string.IsNullOrWhiteSpace(user.Role))
+                if (user == null)
                 {
-                    return BadRequest("Thông tin đăng ký không hợp lệ!");
+                    return BadRequest("Registration data is missing.");
                 }
-                if(user.Role!="user" && user.Role != "admin")
+                if (string.IsNullOrWhiteSpace(user.UserName))
+                {
+                    return BadRequest("Username is required.");
+                }
+                if (string.IsNullOrWhiteSpace(user.PassWord))
+                {
+                    return BadRequest("Password is required.");
+                }
+                if (string.IsNullOrWhiteSpace(user.Role))
+                {
+                    return BadRequest("Role is required.");
+                }
+                if (user.Role != "user" && user.Role != "admin")
                 {
                     user.Role = "user";
                 }
@@ -63,13 +77,19 @@ namespace StudentAPI.Controllers
                 con.Open();
                 int i = cmd.ExecuteNonQuery();
                 con.Close();
-                return i > 0 ? Ok("Đăng ký thành công!") : StatusCode(500, "Lỗi đăng ký.");
+                if (i > 0)
+                {
+                    return Ok("Registration successful!");
+                }
+                else
+                {
+                    return StatusCode(500, "Registration failed. The username may already exist.");
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
-                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
-
+                _logger.LogError(ex, "An error occurred during registration.");
+                return StatusCode(500, "An unexpected error occurred during registration. Please try again later.");
             }
         }
 
@@ -77,9 +97,13 @@ namespace StudentAPI.Controllers
         [HttpPost("login")]
         public IActionResult Login(string UserName, string PassWord)
         {
-            if (string.IsNullOrWhiteSpace(UserName) || string.IsNullOrWhiteSpace(PassWord))
+            if (string.IsNullOrWhiteSpace(UserName))
             {
-                return BadRequest("Tên đăng nhập hoặc mật khẩu không được để trống!");
+                return BadRequest("Username is required.");
+            }
+            if (string.IsNullOrWhiteSpace(PassWord))
+            {
+                return BadRequest("Password is required.");
             }
             try
             {
@@ -107,13 +131,12 @@ namespace StudentAPI.Controllers
                     }
 
                 }
-                return Unauthorized(new { Message = "Tên đăng nhập hoặc mật khẩu không đúng!" });
+                return Unauthorized(new { Message = "Invalid username or password." });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
-                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
-
+                _logger.LogError(ex, "An error occurred during login.");
+                return StatusCode(500, "An unexpected error occurred during login. Please try again later.");
             }
 
         }

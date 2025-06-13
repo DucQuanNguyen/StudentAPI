@@ -13,9 +13,11 @@ namespace StudentAPI.Controllers
     public class StudentController : ControllerBase
     {
         private readonly string _connectionString;
-        public StudentController(IConfiguration configuration)
+        private readonly ILogger<StudentController> _logger;
+        public StudentController(IConfiguration configuration, ILogger<StudentController> logger)
         {
             _connectionString = configuration.GetConnectionString("DefaultConnection");
+            _logger = logger;
         }
 
         [HttpGet]
@@ -48,13 +50,13 @@ namespace StudentAPI.Controllers
                 }
                 else
                 {
-                    return NotFound("Không có sinh viên.");
+                    return NotFound("No students found.");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
-                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
+                _logger.LogError(ex, "An error occurred while retrieving students.");
+                return StatusCode(500, "An unexpected error occurred while retrieving students. Please try again later.");
             }
         }
 
@@ -63,6 +65,14 @@ namespace StudentAPI.Controllers
         {
             try
             {
+                if (sinhVien == null)
+                {
+                    return BadRequest("Student data is missing.");
+                }
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
                 using SqlConnection con = new SqlConnection(_connectionString);
                 using SqlCommand cmd = new SqlCommand("AddSinhVien", con);
                 cmd.CommandType = CommandType.StoredProcedure;
@@ -75,14 +85,13 @@ namespace StudentAPI.Controllers
                 con.Open();
                 int i = cmd.ExecuteNonQuery();
                 con.Close();
-                return i > 0 ? Ok("Add success!") : StatusCode(500, "Error!");
+                return i > 0 ? Ok("Student added successfully!") : StatusCode(500, "Failed to add student. The student may already exist.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
-                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
+                _logger.LogError(ex, "An error occurred while adding a student.");
+                return StatusCode(500, "An unexpected error occurred while adding the student. Please try again later.");
             }
-            
         }
 
         [HttpGet("{id}")]
@@ -108,15 +117,15 @@ namespace StudentAPI.Controllers
                 }
                 else
                 {
-                    return NotFound("Không tìm thấy sinh viên với ID được cung cấp.");
+                    return NotFound("No student found with the provided ID.");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
-                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
+                _logger.LogError(ex, "An error occurred while retrieving student by ID.");
+                return StatusCode(500, "An unexpected error occurred while retrieving the student. Please try again later.");
             }
-            
+
         }
 
         [HttpPut("{id}")]
@@ -124,6 +133,14 @@ namespace StudentAPI.Controllers
         {
             try
             {
+                if (updatedSinhVien == null)
+                {
+                    return BadRequest("Student data is missing.");
+                }
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
                 using SqlConnection con = new SqlConnection(_connectionString);
                 using SqlCommand cmd = new SqlCommand("UpdateSinhVien", con);
                 cmd.CommandType = CommandType.StoredProcedure;
@@ -136,15 +153,13 @@ namespace StudentAPI.Controllers
                 con.Open();
                 int i = cmd.ExecuteNonQuery();
                 con.Close();
-                return i > 0 ? Ok("Update success!") : StatusCode(500, "Error!");
-                
+                return i > 0 ? Ok("Student updated successfully!") : NotFound("No student found with the provided ID.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
-                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
+                _logger.LogError(ex, "An error occurred while updating the student.");
+                return StatusCode(500, "An unexpected error occurred while updating the student. Please try again later.");
             }
-            
         }
 
         [HttpDelete("{id}")]
@@ -160,16 +175,13 @@ namespace StudentAPI.Controllers
                 con.Open();
                 int i = cmd.ExecuteNonQuery();
                 con.Close();
-                return i > 0 ? Ok("Delete success!") : StatusCode(500, "Error!");
-               
+                return i > 0 ? Ok("Student deleted successfully!") : NotFound("No student found with the provided ID.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Lỗi xảy ra: {ex.Message}");
-                return StatusCode(500, "Đã có lỗi xảy ra, vui lòng thử lại sau.");
+                _logger.LogError(ex, "An error occurred while deleting the student.");
+                return StatusCode(500, "An unexpected error occurred while deleting the student. Please try again later.");
             }
-            
         }
-
     }
 }
