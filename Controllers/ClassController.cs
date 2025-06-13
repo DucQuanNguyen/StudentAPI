@@ -201,6 +201,8 @@ namespace StudentAPI.Controllers
                 LopHoc deleted = null;
                 using (SqlConnection con = new SqlConnection(_connectionString))
                 {
+                    await con.OpenAsync();
+
                     // Fetch the entity before deletion
                     using (SqlCommand getCmd = new SqlCommand(SP_GET_BY_ID, con)
                     {
@@ -208,7 +210,6 @@ namespace StudentAPI.Controllers
                     })
                     {
                         getCmd.Parameters.AddWithValue(PARAM_ID, id);
-                        await con.OpenAsync();
                         using (SqlDataReader reader = await getCmd.ExecuteReaderAsync())
                         {
                             if (await reader.ReadAsync())
@@ -223,7 +224,7 @@ namespace StudentAPI.Controllers
                     }
 
                     if (deleted == null)
-                        return NotFound("No class found with the provided ID.");
+                        return NotFound(new { message = "No class found with the provided ID." });
 
                     // Delete the entity
                     using (SqlCommand cmd = new SqlCommand(SP_DELETE, con)
@@ -232,12 +233,11 @@ namespace StudentAPI.Controllers
                     })
                     {
                         cmd.Parameters.AddWithValue(PARAM_ID, id);
-                        await con.OpenAsync();
                         int i = await cmd.ExecuteNonQueryAsync();
                         if (i > 0)
                             return Ok(deleted); // Return the deleted entity
                         else
-                            return NotFound("No class found with the provided ID.");
+                            return NotFound(new { message = "No class found with the provided ID." });
                     }
                 }
             }
