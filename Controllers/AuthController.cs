@@ -39,13 +39,17 @@ namespace StudentAPI.Controllers
         //    return Id+1;
         //}
         [HttpPost("register")]
-        public IActionResult Register([FromBody] User user)
+        public async Task<IActionResult> Register([FromBody] User user)
         {
             try
             {
                 if (user == null)
                 {
                     return BadRequest("Registration data is missing.");
+                }
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
                 }
                 if (string.IsNullOrWhiteSpace(user.UserName))
                 {
@@ -74,17 +78,14 @@ namespace StudentAPI.Controllers
                 cmd.Parameters.AddWithValue("@PassWord", hashedPassword);
                 cmd.Parameters.AddWithValue("@Role", user.Role);
 
-                con.Open();
-                int i = cmd.ExecuteNonQuery();
-                con.Close();
+                await con.OpenAsync();
+                int i = await cmd.ExecuteNonQueryAsync();
+                await con.CloseAsync();
+
                 if (i > 0)
-                {
                     return Ok("Registration successful!");
-                }
                 else
-                {
                     return StatusCode(500, "Registration failed. The username may already exist.");
-                }
             }
             catch (Exception ex)
             {
@@ -95,41 +96,41 @@ namespace StudentAPI.Controllers
 
 
         [HttpPost("login")]
-        public IActionResult Login(string UserName, string PassWord)
+        public async Task<IActionResult> Login([FromBody] LoginRequest loginUser)
         {
-            if (string.IsNullOrWhiteSpace(UserName))
-            {
-                return BadRequest("Username is required.");
-            }
-            if (string.IsNullOrWhiteSpace(PassWord))
-            {
-                return BadRequest("Password is required.");
-            }
+            if (loginUser == null)
+                return BadRequest("Login data is missing.");
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             try
             {
                 using SqlConnection con = new SqlConnection(_connectionString);
-                SqlDataAdapter adapter = new SqlDataAdapter("upLogin", con);
-                adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
-                adapter.SelectCommand.Parameters.AddWithValue("@UserName", UserName);
-                DataTable dataTable = new DataTable();
-                adapter.Fill(dataTable);
-                if (dataTable.Rows.Count > 0 && !string.IsNullOrEmpty(dataTable.Rows[0]["PassWord"].ToString()))
+                using SqlCommand cmd = new SqlCommand("upLogin", con)
                 {
-                    string hashedInputPassword = Enpas.HashPassword(PassWord);
-                    string storedPassword = dataTable.Rows[0]["PassWord"].ToString();
+                    CommandType = CommandType.StoredProcedure
+                };
+                cmd.Parameters.AddWithValue("@UserName", loginUser.UserName);
+
+                await con.OpenAsync();
+                using SqlDataReader reader = await cmd.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    string storedPassword = reader["PassWord"].ToString();
+                    string hashedInputPassword = Enpas.HashPassword(loginUser.PassWord);
 
                     if (hashedInputPassword == storedPassword)
                     {
                         User existingUser = new User
                         {
-                            UserName = dataTable.Rows[0]["UserName"].ToString(),
-                            Role = dataTable.Rows[0]["Role"].ToString()
+                            UserName = reader["UserName"].ToString(),
+                            Role = reader["Role"].ToString()
                         };
 
                         var token = _tokenService.GenerateToken(existingUser);
-                        return Ok(new { Token = token }); ;
+                        return Ok(new { Token = token });
                     }
-
                 }
                 return Unauthorized(new { Message = "Invalid username or password." });
             }
@@ -138,7 +139,7 @@ namespace StudentAPI.Controllers
                 _logger.LogError(ex, "An error occurred during login.");
                 return StatusCode(500, "An unexpected error occurred during login. Please try again later.");
             }
-
         }
+    }
     }
 }

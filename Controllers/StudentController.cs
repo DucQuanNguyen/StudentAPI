@@ -9,9 +9,22 @@ namespace StudentAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-
     public class StudentController : ControllerBase
     {
+        // Stored Procedure Names
+        private const string SP_GET_ALL = "GETSinhVien";
+        private const string SP_GET_BY_ID = "GETSinhVienById";
+        private const string SP_ADD = "AddSinhVien";
+        private const string SP_UPDATE = "UpdateSinhVien";
+        private const string SP_DELETE = "DeleteSinhVien";
+
+        // Parameter Names
+        private const string PARAM_STUDENT_ID = "@StudentID";
+        private const string PARAM_STUDENT_NAME = "@StudentName";
+        private const string PARAM_BIRTH_DATE = "@BirthDate";
+        private const string PARAM_GENDER = "@Gender";
+        private const string PARAM_CLASS_ID = "@ClassID";
+
         private readonly string _connectionString;
         private readonly ILogger<StudentController> _logger;
         public StudentController(IConfiguration configuration, ILogger<StudentController> logger)
@@ -21,37 +34,31 @@ namespace StudentAPI.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetSinhViens()
+        public async Task<IActionResult> GetSinhViens()
         {
             try
             {
                 using SqlConnection con = new SqlConnection(_connectionString);
-                using SqlDataAdapter adapter = new SqlDataAdapter("GETSinhVien", con);
-                adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
-                DataTable dataTable = new DataTable();
-                adapter.Fill(dataTable);
+                using SqlCommand cmd = new SqlCommand(SP_GET_ALL, con)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                await con.OpenAsync();
+                using SqlDataReader reader = await cmd.ExecuteReaderAsync();
                 List<SinhVien> liS = new List<SinhVien>();
-                if (dataTable.Rows.Count > 0)
+                while (await reader.ReadAsync())
                 {
-                    foreach (DataRow row in dataTable.Rows)
+                    SinhVien s = new SinhVien
                     {
-                        SinhVien s = new SinhVien();
-                        s.StudentId = row[0].ToString();
-                        s.StudentName = row[1].ToString();
-                        s.BirthDate = Convert.ToDateTime(row[2].ToString());
-                        s.Gender = row[3].ToString();
-                        s.ClassId = Convert.ToInt32(row[4].ToString());
-                        liS.Add(s);
-                    }
+                        StudentId = reader["StudentId"].ToString(),
+                        StudentName = reader["StudentName"].ToString(),
+                        BirthDate = Convert.ToDateTime(reader["BirthDate"]),
+                        Gender = reader["Gender"].ToString(),
+                        ClassId = Convert.ToInt32(reader["ClassId"])
+                    };
+                    liS.Add(s);
                 }
-                if (liS.Count > 0)
-                {
-                    return Ok(liS);
-                }
-                else
-                {
-                    return NotFound("No students found.");
-                }
+                return liS.Count > 0 ? Ok(liS) : NotFound("No students found.");
             }
             catch (Exception ex)
             {
@@ -61,31 +68,51 @@ namespace StudentAPI.Controllers
         }
 
         [HttpPost]
-        public IActionResult CreateSinhVien(SinhVien sinhVien)
+        public async Task<IActionResult> CreateSinhVien([FromBody] SinhVien sinhVien)
         {
+            if (sinhVien == null)
+                return BadRequest("Student data is missing.");
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             try
             {
-                if (sinhVien == null)
-                {
-                    return BadRequest("Student data is missing.");
-                }
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
                 using SqlConnection con = new SqlConnection(_connectionString);
-                using SqlCommand cmd = new SqlCommand("AddSinhVien", con);
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@StudentID", sinhVien.StudentId);
-                cmd.Parameters.AddWithValue("@StudentName", sinhVien.StudentName);
-                cmd.Parameters.AddWithValue("@BirthDate", sinhVien.BirthDate);
-                cmd.Parameters.AddWithValue("@Gender", sinhVien.Gender);
-                cmd.Parameters.AddWithValue("@ClassID", sinhVien.ClassId);
+                using SqlCommand cmd = new SqlCommand(SP_ADD, con)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                cmd.Parameters.AddWithValue(PARAM_STUDENT_ID, sinhVien.StudentId);
+                cmd.Parameters.AddWithValue(PARAM_STUDENT_NAME, sinhVien.StudentName);
+                cmd.Parameters.AddWithValue(PARAM_BIRTH_DATE, sinhVien.BirthDate);
+                cmd.Parameters.AddWithValue(PARAM_GENDER, sinhVien.Gender);
+                cmd.Parameters.AddWithValue(PARAM_CLASS_ID, sinhVien.ClassId);
 
-                con.Open();
-                int i = cmd.ExecuteNonQuery();
-                con.Close();
-                return i > 0 ? Ok("Student added successfully!") : StatusCode(500, "Failed to add student. The student may already exist.");
+                await con.OpenAsync();
+                int i = await cmd.ExecuteNonQueryAsync();
+                if (i > 0)
+                {
+                    // Fetch the created entity
+                    using SqlCommand getCmd = new SqlCommand(SP_GET_BY_ID, con)
+                    {
+                        CommandType = CommandType.StoredProcedure
+                    };
+                    getCmd.Parameters.AddWithValue(PARAM_STUDENT_ID, sinhVien.StudentId);
+                    using SqlDataReader reader = await getCmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        SinhVien created = new SinhVien
+                        {
+                            StudentId = reader["StudentId"].ToString(),
+                            StudentName = reader["StudentName"].ToString(),
+                            BirthDate = Convert.ToDateTime(reader["BirthDate"]),
+                            Gender = reader["Gender"].ToString(),
+                            ClassId = Convert.ToInt32(reader["ClassId"])
+                        };
+                        return CreatedAtAction(nameof(GetSinhVienById), new { studentId = created.StudentId }, created);
+                    }
+                }
+                return StatusCode(500, "Failed to add student. The student may already exist.");
             }
             catch (Exception ex)
             {
@@ -94,25 +121,29 @@ namespace StudentAPI.Controllers
             }
         }
 
-        [HttpGet("{id}")]
-        public IActionResult  GetSinhVienById(int id)
+        [HttpGet("{studentId}")]
+        public async Task<IActionResult> GetSinhVienById(string studentId)
         {
             try
             {
                 using SqlConnection con = new SqlConnection(_connectionString);
-                using SqlDataAdapter adapter = new SqlDataAdapter("GETSinhVienById", con);
-                adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
-                adapter.SelectCommand.Parameters.AddWithValue("@ID", id);
-                DataTable dataTable = new DataTable();
-                adapter.Fill(dataTable);
-                SinhVien s = new SinhVien();
-                if (dataTable.Rows.Count > 0)
+                using SqlCommand cmd = new SqlCommand(SP_GET_BY_ID, con)
                 {
-                    s.StudentId = dataTable.Rows[0]["StudentId"].ToString();
-                    s.StudentName = dataTable.Rows[0]["StudentName"].ToString();
-                    s.BirthDate = Convert.ToDateTime(dataTable.Rows[0]["BirthDate"].ToString());
-                    s.Gender = dataTable.Rows[0]["Gender"].ToString();
-                    s.ClassId = Convert.ToInt32(dataTable.Rows[0]["ClassId"].ToString());
+                    CommandType = CommandType.StoredProcedure
+                };
+                cmd.Parameters.AddWithValue(PARAM_STUDENT_ID, studentId);
+                await con.OpenAsync();
+                using SqlDataReader reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    SinhVien s = new SinhVien
+                    {
+                        StudentId = reader["StudentId"].ToString(),
+                        StudentName = reader["StudentName"].ToString(),
+                        BirthDate = Convert.ToDateTime(reader["BirthDate"]),
+                        Gender = reader["Gender"].ToString(),
+                        ClassId = Convert.ToInt32(reader["ClassId"])
+                    };
                     return Ok(s);
                 }
                 else
@@ -125,35 +156,54 @@ namespace StudentAPI.Controllers
                 _logger.LogError(ex, "An error occurred while retrieving student by ID.");
                 return StatusCode(500, "An unexpected error occurred while retrieving the student. Please try again later.");
             }
-
         }
 
-        [HttpPut("{id}")]
-        public IActionResult UpdateSinhVien(string id, SinhVien updatedSinhVien)
+        [HttpPut("{studentId}")]
+        public async Task<IActionResult> UpdateSinhVien(string studentId, [FromBody] SinhVien updatedSinhVien)
         {
+            if (updatedSinhVien == null)
+                return BadRequest("Student data is missing.");
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             try
             {
-                if (updatedSinhVien == null)
-                {
-                    return BadRequest("Student data is missing.");
-                }
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
                 using SqlConnection con = new SqlConnection(_connectionString);
-                using SqlCommand cmd = new SqlCommand("UpdateSinhVien", con);
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@StudentID", id);
-                cmd.Parameters.AddWithValue("@StudentName", updatedSinhVien.StudentName);
-                cmd.Parameters.AddWithValue("@BirthDate", updatedSinhVien.BirthDate);
-                cmd.Parameters.AddWithValue("@Gender", updatedSinhVien.Gender);
-                cmd.Parameters.AddWithValue("@ClassID", updatedSinhVien.ClassId);
+                using SqlCommand cmd = new SqlCommand(SP_UPDATE, con)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                cmd.Parameters.AddWithValue(PARAM_STUDENT_ID, studentId);
+                cmd.Parameters.AddWithValue(PARAM_STUDENT_NAME, updatedSinhVien.StudentName);
+                cmd.Parameters.AddWithValue(PARAM_BIRTH_DATE, updatedSinhVien.BirthDate);
+                cmd.Parameters.AddWithValue(PARAM_GENDER, updatedSinhVien.Gender);
+                cmd.Parameters.AddWithValue(PARAM_CLASS_ID, updatedSinhVien.ClassId);
 
-                con.Open();
-                int i = cmd.ExecuteNonQuery();
-                con.Close();
-                return i > 0 ? Ok("Student updated successfully!") : NotFound("No student found with the provided ID.");
+                await con.OpenAsync();
+                int i = await cmd.ExecuteNonQueryAsync();
+                if (i > 0)
+                {
+                    // Fetch the updated entity
+                    using SqlCommand getCmd = new SqlCommand(SP_GET_BY_ID, con)
+                    {
+                        CommandType = CommandType.StoredProcedure
+                    };
+                    getCmd.Parameters.AddWithValue(PARAM_STUDENT_ID, studentId);
+                    using SqlDataReader reader = await getCmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        SinhVien updated = new SinhVien
+                        {
+                            StudentId = reader["StudentId"].ToString(),
+                            StudentName = reader["StudentName"].ToString(),
+                            BirthDate = Convert.ToDateTime(reader["BirthDate"]),
+                            Gender = reader["Gender"].ToString(),
+                            ClassId = Convert.ToInt32(reader["ClassId"])
+                        };
+                        return Ok(updated);
+                    }
+                }
+                return NotFound("No student found with the provided ID.");
             }
             catch (Exception ex)
             {
@@ -162,20 +212,56 @@ namespace StudentAPI.Controllers
             }
         }
 
-        [HttpDelete("{id}")]
-        public IActionResult DeleteSinhVien(string id)
+        [HttpDelete("{studentId}")]
+        public async Task<IActionResult> DeleteSinhVien(string studentId)
         {
             try
             {
-                using SqlConnection con = new SqlConnection(_connectionString);
-                using SqlCommand cmd = new SqlCommand("DeleteSinhVien", con);
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@StudentID", id);
+                SinhVien deleted = null;
+                using (SqlConnection con = new SqlConnection(_connectionString))
+                {
+                    // Fetch the entity before deletion
+                    using (SqlCommand getCmd = new SqlCommand(SP_GET_BY_ID, con)
+                    {
+                        CommandType = CommandType.StoredProcedure
+                    })
+                    {
+                        getCmd.Parameters.AddWithValue(PARAM_STUDENT_ID, studentId);
+                        await con.OpenAsync();
+                        using (SqlDataReader reader = await getCmd.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                deleted = new SinhVien
+                                {
+                                    StudentId = reader["StudentId"].ToString(),
+                                    StudentName = reader["StudentName"].ToString(),
+                                    BirthDate = Convert.ToDateTime(reader["BirthDate"]),
+                                    Gender = reader["Gender"].ToString(),
+                                    ClassId = Convert.ToInt32(reader["ClassId"])
+                                };
+                            }
+                        }
+                    }
 
-                con.Open();
-                int i = cmd.ExecuteNonQuery();
-                con.Close();
-                return i > 0 ? Ok("Student deleted successfully!") : NotFound("No student found with the provided ID.");
+                    if (deleted == null)
+                        return NotFound("No student found with the provided ID.");
+
+                    // Delete the entity
+                    using (SqlCommand cmd = new SqlCommand(SP_DELETE, con)
+                    {
+                        CommandType = CommandType.StoredProcedure
+                    })
+                    {
+                        cmd.Parameters.AddWithValue(PARAM_STUDENT_ID, studentId);
+                        await con.OpenAsync();
+                        int i = await cmd.ExecuteNonQueryAsync();
+                        if (i > 0)
+                            return Ok(deleted); // Return the deleted entity
+                        else
+                            return NotFound("No student found with the provided ID.");
+                    }
+                }
             }
             catch (Exception ex)
             {
