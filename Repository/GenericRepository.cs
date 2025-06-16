@@ -44,6 +44,7 @@ public class GenericRepository<T, TKey> : IRepository<T, TKey>
         _outputIdParamName = outputIdParamName;
     }
 
+    //hiển thị tất cả các bản ghi
     public async Task<List<T>> GetAllAsync()
     {
         var items = new List<T>();
@@ -56,6 +57,7 @@ public class GenericRepository<T, TKey> : IRepository<T, TKey>
         return items;
     }
 
+    //hiển thị bản ghi theo id
     public async Task<T?> GetByIdAsync(TKey id)
     {
         await using var cmd = await _baseService.CreateCommandAsync(_spGetById).ConfigureAwait(false);
@@ -64,6 +66,7 @@ public class GenericRepository<T, TKey> : IRepository<T, TKey>
         return await reader.ReadAsync().ConfigureAwait(false) ? _mapper.Map(reader) : default;
     }
 
+    //thêm bản ghi mới
     public async Task<T?> CreateAsync(T entity)
     {
         await using var cmd = await _baseService.CreateCommandAsync(_spAdd).ConfigureAwait(false);
@@ -91,6 +94,7 @@ public class GenericRepository<T, TKey> : IRepository<T, TKey>
         return default;
     }
 
+    //cập nhật bản ghi theo id
     public async Task<T?> UpdateAsync(TKey id, T entity)
     {
         await using var cmd = await _baseService.CreateCommandAsync(_spUpdate).ConfigureAwait(false);
@@ -101,6 +105,7 @@ public class GenericRepository<T, TKey> : IRepository<T, TKey>
         return default;
     }
 
+    //xóa bản ghi theo id
     public async Task<T?> DeleteAsync(TKey id)
     {
         var existing = await GetByIdAsync(id).ConfigureAwait(false);
@@ -111,6 +116,7 @@ public class GenericRepository<T, TKey> : IRepository<T, TKey>
         return await cmd.ExecuteNonQueryAsync().ConfigureAwait(false) > 0 ? existing : default;
     }
 
+    //phân trang dữ liệu
     public async Task<(List<T> Items, int TotalCount)> GetPagedAsync(int page, int pageSize)
     {
         if (!string.IsNullOrEmpty(_spGetPaged))
@@ -136,6 +142,8 @@ public class GenericRepository<T, TKey> : IRepository<T, TKey>
         var paged = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
         return (paged, total);
     }
+
+    //lấy bản ghi theo tên người dùng (chỉ hỗ trợ cho entity User)
     public async Task<T?> GetByUserNameAsync(string userName)
     {
         if (typeof(T).Name == "User")
