@@ -109,10 +109,21 @@ namespace StudentAPI.Services
 
         public async Task<(List<SinhVien> Items, int TotalCount)> GetPagedAsync(int page, int pageSize)
         {
-            var all = await GetAllAsync().ConfigureAwait(false);
-            var totalCount = all.Count;
-            var items = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
-            return (items, totalCount);
+            var students = new List<SinhVien>();
+            int totalCount = 0;
+
+            await using var cmd = await CreateCommandAsync("GETSinhVienPaged").ConfigureAwait(false);
+            cmd.Parameters.AddWithValue("@Page", page);
+            cmd.Parameters.AddWithValue("@PageSize", pageSize);
+
+            await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+            while (await reader.ReadAsync().ConfigureAwait(false))
+            {
+                students.Add(MapSinhVien(reader));
+                if (totalCount == 0 && reader["TotalCount"] != DBNull.Value)
+                    totalCount = Convert.ToInt32(reader["TotalCount"]);
+            }
+            return (students, totalCount);
         }
     }
 }

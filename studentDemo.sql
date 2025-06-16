@@ -86,6 +86,27 @@ BEGIN
 	DELETE FROM [dbo].[LopHoc]
 	WHERE [ID] = @ID AND NOT EXISTS (SELECT * FROM [dbo].[SinhVien] WHERE [ClassID] = @ID)
 END
+GO
+CREATE PROCEDURE GETLopHocPaged
+    @Page INT,
+    @PageSize INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        *,
+        TotalCount = COUNT(*) OVER()
+    FROM 
+        LopHoc
+    ORDER BY 
+        Id
+    OFFSET (@Page - 1) * @PageSize ROWS
+    FETCH NEXT @PageSize ROWS ONLY;
+END
+
+-------------
+
 Go
 CREATE PROC GETSinhVien
 AS
@@ -195,4 +216,22 @@ CREATE PROC GetUser
 AS 
 BEGIN
 	SELECT * FROM [dbo].[User];
+END
+GO
+CREATE PROCEDURE GETSinhVienPaged
+    @Page INT,
+    @PageSize INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        *,
+        TotalCount = COUNT(*) OVER()
+    FROM 
+        SinhVien
+    ORDER BY 
+        StudentId
+    OFFSET (@Page - 1) * @PageSize ROWS
+    FETCH NEXT @PageSize ROWS ONLY;
 END
