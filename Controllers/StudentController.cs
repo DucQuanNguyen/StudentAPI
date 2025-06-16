@@ -23,15 +23,29 @@ namespace StudentAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetSinhViens()
+        public async Task<IActionResult> GetSinhViens([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
-                var students = await _studentService.GetAllAsync();
+                if (page <= 0 || pageSize <= 0)
+                    return BadRequest(new { message = "Page and pageSize must be greater than zero." });
+
+                var (students, totalCount) = await _studentService.GetPagedAsync(page, pageSize);
                 var dtos = students.Select(Mapper.ToDto).ToList();
-                return dtos.Count > 0
-                    ? Ok(dtos)
-                    : NotFound(new { message = "No students found." });
+
+                var response = new
+                {
+                    data = dtos,
+                    pagination = new
+                    {
+                        page,
+                        pageSize,
+                        totalCount,
+                        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                    }
+                };
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -51,7 +65,7 @@ namespace StudentAPI.Controllers
             {
                 var created = await _studentService.CreateAsync(Mapper.ToEntity(sinhVienDto));
                 if (created != null)
-                    return CreatedAtAction(nameof(GetSinhVienById), new { studentId = created.StudentId }, Mapper.ToDto(created));
+                    return CreatedAtAction(nameof(GetSinhVienById), new { studentId = created.StudentId }, new { data = Mapper.ToDto(created) });
 
                 return StatusCode(500, new { message = "Failed to add student. The student may already exist." });
             }
@@ -69,7 +83,7 @@ namespace StudentAPI.Controllers
             {
                 var student = await _studentService.GetByIdAsync(studentId);
                 if (student != null)
-                    return Ok(Mapper.ToDto(student));
+                    return Ok(new { data = Mapper.ToDto(student) });
                 return NotFound(new { message = "No student found with the provided ID." });
             }
             catch (Exception ex)
@@ -90,7 +104,7 @@ namespace StudentAPI.Controllers
             {
                 var updated = await _studentService.UpdateAsync(studentId, Mapper.ToEntity(updatedSinhVienDto));
                 if (updated != null)
-                    return Ok(Mapper.ToDto(updated));
+                    return Ok(new { data = Mapper.ToDto(updated) });
                 return NotFound(new { message = "No student found with the provided ID." });
             }
             catch (Exception ex)
@@ -108,7 +122,7 @@ namespace StudentAPI.Controllers
             {
                 var deleted = await _studentService.DeleteAsync(studentId);
                 if (deleted != null)
-                    return Ok(Mapper.ToDto(deleted));
+                    return Ok(new { data = Mapper.ToDto(deleted) });
                 return NotFound(new { message = "No student found with the provided ID." });
             }
             catch (Exception ex)

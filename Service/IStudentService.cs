@@ -9,5 +9,6 @@ namespace StudentAPI.Service
         Task<SinhVien?> CreateAsync(SinhVien sinhVien);
         Task<SinhVien?> UpdateAsync(string studentId, SinhVien updatedSinhVien);
         Task<SinhVien?> DeleteAsync(string studentId);
+        Task<(List<SinhVien> Items, int TotalCount)> GetPagedAsync(int page, int pageSize);
     }
 }

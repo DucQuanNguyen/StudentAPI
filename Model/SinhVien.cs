@@ -13,12 +13,14 @@ public partial class SinhVien
     public string StudentName { get; set; }
 
     [Required]
+    [DataType(DataType.Date)]
     public DateTime BirthDate { get; set; }
 
     [Required]
-    [RegularExpression("Male|Female", ErrorMessage = "Gender must be 'Male' or 'Female'.")]
+    [RegularExpression("Male|Female|Other", ErrorMessage = "Gender must be 'Male', 'Female' or 'Other'.")]
     public string Gender { get; set; }
 
     [Required]
+    [Range(1, int.MaxValue, ErrorMessage = "ClassId must be a positive integer.")]
     public int ClassId { get; set; }
 }

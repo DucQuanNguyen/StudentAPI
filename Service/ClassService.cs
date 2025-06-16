@@ -96,5 +96,12 @@ namespace StudentAPI.Services
                 ClassName = reader["ClassName"] as string ?? string.Empty
             };
         }
+        public async Task<(List<LopHoc> Items, int TotalCount)> GetPagedAsync(int page, int pageSize)
+        {
+            var all = await GetAllAsync();
+            var totalCount = all.Count;
+            var items = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            return (items, totalCount);
+        }
     }
 }

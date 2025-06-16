@@ -23,15 +23,29 @@ namespace StudentAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetLopHoc()
+        public async Task<IActionResult> GetLopHoc([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
-                var classes = await _classService.GetAllAsync();
+                if (page <= 0 || pageSize <= 0)
+                    return BadRequest(new { message = "Page and pageSize must be greater than zero." });
+
+                var (classes, totalCount) = await _classService.GetPagedAsync(page, pageSize);
                 var dtos = classes.Select(Mapper.ToDto).ToList();
-                return dtos.Count > 0
-                    ? Ok(dtos)
-                    : NotFound(new { message = "No classes found." });
+
+                var response = new
+                {
+                    data = dtos,
+                    pagination = new
+                    {
+                        page,
+                        pageSize,
+                        totalCount,
+                        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                    }
+                };
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -51,7 +65,7 @@ namespace StudentAPI.Controllers
             {
                 var created = await _classService.CreateAsync(Mapper.ToEntity(classDto));
                 if (created != null)
-                    return CreatedAtAction(nameof(GetLopHocById), new { id = created.Id }, Mapper.ToDto(created));
+                    return CreatedAtAction(nameof(GetLopHocById), new { id = created.Id }, new { data = Mapper.ToDto(created) });
 
                 return StatusCode(500, new { message = "Failed to add class. The class may already exist." });
             }
@@ -69,7 +83,7 @@ namespace StudentAPI.Controllers
             {
                 var lopHoc = await _classService.GetByIdAsync(id);
                 if (lopHoc != null)
-                    return Ok(Mapper.ToDto(lopHoc));
+                    return Ok(new { data = Mapper.ToDto(lopHoc) });
                 return NotFound(new { message = "No class found with the provided ID." });
             }
             catch (Exception ex)
@@ -90,7 +104,7 @@ namespace StudentAPI.Controllers
             {
                 var updated = await _classService.UpdateAsync(id, Mapper.ToEntity(updatedClassDto));
                 if (updated != null)
-                    return Ok(Mapper.ToDto(updated));
+                    return Ok(new { data = Mapper.ToDto(updated) });
                 return NotFound(new { message = "No class found with the provided ID." });
             }
             catch (Exception ex)
@@ -108,7 +122,7 @@ namespace StudentAPI.Controllers
             {
                 var deleted = await _classService.DeleteAsync(id);
                 if (deleted != null)
-                    return Ok(Mapper.ToDto(deleted));
+                    return Ok(new { data = Mapper.ToDto(deleted) });
                 return NotFound(new { message = "No class found with the provided ID." });
             }
             catch (Exception ex)

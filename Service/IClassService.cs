@@ -9,5 +9,6 @@ namespace StudentAPI.Service
         Task<LopHoc?> CreateAsync(LopHoc lopHoc);
         Task<LopHoc?> UpdateAsync(int id, LopHoc updatedLopHoc);
         Task<LopHoc?> DeleteAsync(int id);
+        Task<(List<LopHoc> Items, int TotalCount)> GetPagedAsync(int page, int pageSize);
     }
 }
