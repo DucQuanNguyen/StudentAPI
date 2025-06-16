@@ -8,23 +8,23 @@ namespace StudentAPI.Service
     public class AuthService : BaseService, IAuthService
     {
         private readonly ITokenService _tokenService;
+        private readonly IDataMapper<User> _mapper;
+        private readonly IParameterAdder<User> _parameterAdder;
 
         public AuthService(IConfiguration configuration, ITokenService tokenService)
             : base(configuration)
         {
             _tokenService = tokenService;
+            _mapper = new UserMapper();
+            _parameterAdder = new UserParameterAdder();
         }
 
         public async Task<bool> RegisterAsync(User user)
         {
             await using var cmd = await CreateCommandAsync("Register").ConfigureAwait(false);
 
-            string hashedPassword = Enpas.HashPassword(user.PassWord);
-
-            cmd.Parameters.AddWithValue("@Id", user.Id.ToString());
-            cmd.Parameters.AddWithValue("@UserName", user.UserName);
-            cmd.Parameters.AddWithValue("@PassWord", hashedPassword);
-            cmd.Parameters.AddWithValue("@Role", user.Role);
+            user.PassWord = Enpas.HashPassword(user.PassWord);
+            _parameterAdder.AddParameters(cmd, user);
 
             int i = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             return i > 0;
@@ -39,17 +39,13 @@ namespace StudentAPI.Service
 
             if (await reader.ReadAsync().ConfigureAwait(false))
             {
-                string? storedPassword = reader["PassWord"] as string;
+                var existingUser = _mapper.Map(reader);
                 string hashedInputPassword = Enpas.HashPassword(loginUser.PassWord);
 
-                if (!string.IsNullOrEmpty(storedPassword) && hashedInputPassword == storedPassword)
+                if (!string.IsNullOrEmpty(existingUser.PassWord) && hashedInputPassword == existingUser.PassWord)
                 {
-                    var existingUser = new User
-                    {
-                        UserName = reader["UserName"] as string ?? string.Empty,
-                        Role = reader["Role"] as string ?? string.Empty
-                    };
-
+                    // Không trả về PassWord cho token
+                    existingUser.PassWord = string.Empty;
                     return _tokenService.GenerateToken(existingUser);
                 }
             }
