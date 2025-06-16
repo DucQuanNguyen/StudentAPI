@@ -171,6 +171,24 @@ BEGIN
 	WHERE [StudentID] = @StudentID
 END
 GO
+CREATE PROCEDURE GETSinhVienPaged
+    @Page INT,
+    @PageSize INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        *,
+        TotalCount = COUNT(*) OVER()
+    FROM 
+        SinhVien
+    ORDER BY 
+        StudentId
+    OFFSET (@Page - 1) * @PageSize ROWS
+    FETCH NEXT @PageSize ROWS ONLY;
+END
+GO
 CREATE PROC DeleteSinhVien(
 	@StudentID nvarchar(10))
 AS
@@ -178,6 +196,9 @@ BEGIN
 	DELETE FROM [dbo].[SinhVien]
 	WHERE [StudentID] = @StudentID
 END
+
+--------------------------------------------
+
 GO
 CREATE PROC Register(
 	@ID UNIQUEIDENTIFIER,
@@ -216,22 +237,4 @@ CREATE PROC GetUser
 AS 
 BEGIN
 	SELECT * FROM [dbo].[User];
-END
-GO
-CREATE PROCEDURE GETSinhVienPaged
-    @Page INT,
-    @PageSize INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT 
-        *,
-        TotalCount = COUNT(*) OVER()
-    FROM 
-        SinhVien
-    ORDER BY 
-        StudentId
-    OFFSET (@Page - 1) * @PageSize ROWS
-    FETCH NEXT @PageSize ROWS ONLY;
 END

@@ -7,12 +7,12 @@ namespace StudentAPI.Service
     {
         private readonly string _connectionString;
 
-        protected BaseService(IConfiguration configuration)
+        public BaseService(IConfiguration configuration)
         {
             _connectionString = configuration.GetConnectionString("DefaultConnection");
         }
 
-        protected async Task<SqlCommand> CreateCommandAsync(string storedProcedure)
+        public async Task<SqlCommand> CreateCommandAsync(string storedProcedure)
         {
             var connection = new SqlConnection(_connectionString);
             var command = new SqlCommand(storedProcedure, connection)

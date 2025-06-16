@@ -1,52 +1,40 @@
-﻿using System.Data;
-using Microsoft.Data.SqlClient;
-using StudentAPI.Controllers;
+﻿using StudentAPI.Controllers;
 using StudentAPI.Model;
+using StudentAPI.Service;
 
 namespace StudentAPI.Service
 {
-    public class AuthService : BaseService, IAuthService
+    public class AuthService : IAuthService
     {
+        private readonly IRepository<User, Guid> _repository;
         private readonly ITokenService _tokenService;
-        private readonly IDataMapper<User> _mapper;
-        private readonly IParameterAdder<User> _parameterAdder;
 
-        public AuthService(IConfiguration configuration, ITokenService tokenService)
-            : base(configuration)
+        public AuthService(
+            IRepository<User, Guid> repository,
+            ITokenService tokenService)
         {
+            _repository = repository;
             _tokenService = tokenService;
-            _mapper = new UserMapper();
-            _parameterAdder = new UserParameterAdder();
         }
 
         public async Task<bool> RegisterAsync(User user)
         {
-            await using var cmd = await CreateCommandAsync("Register").ConfigureAwait(false);
-
             user.PassWord = Enpas.HashPassword(user.PassWord);
-            _parameterAdder.AddParameters(cmd, user);
-
-            int i = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-            return i > 0;
+            var created = await _repository.CreateAsync(user);
+            return created != null;
         }
 
         public async Task<string?> LoginAsync(LoginRequest loginUser)
         {
-            await using var cmd = await CreateCommandAsync("upLogin").ConfigureAwait(false);
-            cmd.Parameters.AddWithValue("@UserName", loginUser.UserName);
+            var user = await _repository.GetByUserNameAsync(loginUser.UserName);
 
-            await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
-
-            if (await reader.ReadAsync().ConfigureAwait(false))
+            if (user != null)
             {
-                var existingUser = _mapper.Map(reader);
                 string hashedInputPassword = Enpas.HashPassword(loginUser.PassWord);
-
-                if (!string.IsNullOrEmpty(existingUser.PassWord) && hashedInputPassword == existingUser.PassWord)
+                if (!string.IsNullOrEmpty(user.PassWord) && hashedInputPassword == user.PassWord)
                 {
-                    // Không trả về PassWord cho token
-                    existingUser.PassWord = string.Empty;
-                    return _tokenService.GenerateToken(existingUser);
+                    user.PassWord = string.Empty; // Không trả về password
+                    return _tokenService.GenerateToken(user);
                 }
             }
             return null;
