@@ -20,7 +20,7 @@ namespace StudentAPI.Controllers
             _authService = authService;
             _logger = logger;
         }
-
+        // Register a new user
         [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterUserDto registerDto)
@@ -46,9 +46,10 @@ namespace StudentAPI.Controllers
             // Check if the role is provided
             if (string.IsNullOrWhiteSpace(registerDto.Role))
                 return BadRequest(new { message = "Role is required." });
-
+            // Check if the password meets the minimum length requirement
             try
             {
+                // Create a new user object from the DTO
                 var user = new User
                 {
                     Id = Guid.NewGuid(),
@@ -69,7 +70,7 @@ namespace StudentAPI.Controllers
                 return StatusCode(500, new { message = "An unexpected error occurred during registration. Please try again later." });
             }
         }
-
+        // Endpoint for user login
         [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest loginUser)
@@ -84,15 +85,17 @@ namespace StudentAPI.Controllers
                     .SelectMany(v => v.Errors)
                     .Select(e => e.ErrorMessage)
                     .ToArray();
+                // If the model state is invalid, return a bad request with the validation errors
                 return BadRequest(new { message = "Validation failed.", errors });
             }
-
+            // Check if the username and password are provided
             try
             {
                 // Check if the username and password are provided
                 var token = await _authService.LoginAsync(loginUser);
                 if (token != null)
                     return Ok(new { token });
+                // If the login fails, return an unauthorized response
                 return Unauthorized(new { message = "Invalid username or password." });
             }
             catch (Exception ex)
@@ -101,7 +104,7 @@ namespace StudentAPI.Controllers
                 return StatusCode(500, new { message = "An unexpected error occurred during login. Please try again later." });
             }
         }
-
+        // Endpoint to get the current user's information
         [Authorize]
         [HttpGet("me")]
         public IActionResult Me()
