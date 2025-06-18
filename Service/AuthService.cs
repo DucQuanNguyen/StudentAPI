@@ -17,7 +17,7 @@ namespace StudentAPI.Service
             _tokenService = tokenService;
         }
 
-        //đng ký người dùng mới
+        //đăng ký người dùng mới
         public async Task<bool> RegisterAsync(User user)
         {
             user.PassWord = Enpas.HashPassword(user.PassWord);
