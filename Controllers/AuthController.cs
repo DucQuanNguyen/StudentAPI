@@ -106,7 +106,7 @@ namespace StudentAPI.Controllers
         }
         // Endpoint to get the current user's information
         [Authorize]
-        [HttpGet("me")]
+        [HttpGet("user")]
         public IActionResult Me()
         {
             // Check if the user is authenticated
