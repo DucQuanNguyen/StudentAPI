@@ -22,7 +22,7 @@ namespace StudentAPI.Controllers
         }
         // Register a new user
         [AllowAnonymous]
-        [HttpPost("aaaa")]
+        [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterUserDto registerDto)
         {
             // Validate the incoming registration data
@@ -106,7 +106,7 @@ namespace StudentAPI.Controllers
         }
         // Endpoint to get the current user's information
         [Authorize]
-        [HttpGet("me")]
+        [HttpGet("user")]
         public IActionResult Me()
         {
             // Check if the user is authenticated
